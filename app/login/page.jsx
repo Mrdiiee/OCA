@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../lib/supabase-browser';
 
 export default function LoginPage() {
-  const supabase = createClient();
-  const searchParams = useSearchParams();
+  const supabase = useMemo(() => createClient(), []);
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +20,12 @@ export default function LoginPage() {
     return () => { active = false; };
   }, [supabase]);
 
+  const getNextPath = () => {
+    if (typeof window === 'undefined') return '/';
+    const next = new URLSearchParams(window.location.search).get('next');
+    return next && next.startsWith('/') ? next : '/';
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -33,7 +37,7 @@ export default function LoginPage() {
       if (signUpError) {
         setError(signUpError.message);
       } else if (data.session) {
-        window.location.replace(searchParams.get('next') || '/');
+        window.location.replace(getNextPath());
         return;
       } else {
         setMessage('Akun berhasil dibuat. Cek email untuk konfirmasi sebelum login.');
@@ -49,7 +53,7 @@ export default function LoginPage() {
       return;
     }
 
-    window.location.replace(searchParams.get('next') || '/');
+    window.location.replace(getNextPath());
   };
 
   return (
