@@ -84,6 +84,8 @@ export default function OxygenGearSite() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState("");
 
   const addToCart = (item) => {
     setCart((prev) => {
@@ -101,11 +103,58 @@ export default function OxygenGearSite() {
 
   const total = useMemo(() => cart.reduce((sum, p) => sum + p.price * p.qty, 0), [cart]);
   const itemCount = cart.reduce((sum, p) => sum + p.qty, 0);
+  const [paying, setPaying] = useState(false);
+const [payError, setPayError] = useState("");
 
-  const submitOrder = (e) => {
-    e.preventDefault();
-    setConfirmed(true);
-  };
+const submitOrder = async (e) => {
+  e.preventDefault();
+  setPaying(true);
+  setPayError("");
+
+  try {
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: form.name,
+        phone: form.phone,
+        address: form.address,
+        items: cart,
+        total: total,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setPayError(data.error || "Gagal memproses pesanan.");
+      setPaying(false);
+      return;
+    }
+
+    window.snap.pay(data.token, {
+      onSuccess: () => {
+        setConfirmed(true);
+        setPaying(false);
+      },
+      onPending: () => {
+        setConfirmed(true);
+        setPaying(false);
+      },
+      onError: () => {
+        setPayError("Pembayaran gagal. Silakan coba lagi.");
+        setPaying(false);
+      },
+      onClose: () => {
+        setPaying(false);
+      },
+    });
+  } catch (err) {
+    setPayError("Terjadi kesalahan. Coba lagi.");
+    setPaying(false);
+  }
+};
+ 
 
   return (
     <main className="site-shell">
