@@ -300,7 +300,7 @@ export default function OxygenGearSite() {
           <div>
             <div style={styles.footerHead}>Kontak</div>
             <div style={styles.footerText}>hello@oxygengear.co</div>
-            <div style={styles.footerText}>+62 8xx-xxxx-xxxx</div>
+            <div style={styles.footerText}>+62 83856834372</div>
           </div>
           <div>
             <div style={styles.footerHead}>Ikuti</div>
