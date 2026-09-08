@@ -8,7 +8,7 @@ const PRODUCTS = [
     code: "MODEL / KEYGEN-V1",
     name: "Keygen V1",
     kind: "Keril 45L",
-    price: 850000,
+    price: 550000,
     specs: [
       ["Kapasitas", "45 Liter"],
       ["Material", "Cordura 600D, tahan air"],
