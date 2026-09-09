@@ -19,12 +19,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (mode === 'reset') return undefined;
     let active = true;
     supabase.auth.getUser().then(({ data }) => {
       if (active && data.user) window.location.replace('/');
     });
     return () => { active = false; };
-  }, [supabase]);
+  }, [mode, supabase]);
 
   const getNextPath = () => {
     if (typeof window === 'undefined') return '/';
@@ -37,6 +38,19 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     setMessage('');
+
+    if (mode === 'reset') {
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (resetError) {
+        setError(resetError.message);
+        setLoading(false);
+        return;
+      }
+      setMessage('Link reset password sudah dikirim. Cek email Anda dan ikuti link tersebut.');
+      setLoading(false);
+      return;
+    }
 
     if (mode === 'register') {
       if (password !== confirmPassword) {
@@ -86,6 +100,16 @@ export default function LoginPage() {
     window.location.replace(getNextPath());
   };
 
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    setError('');
+    setMessage('');
+    setPassword('');
+    setConfirmPassword('');
+  };
+
+  const isReset = mode === 'reset';
+
   return (
     <main className="auth-shell">
       <section className="auth-card">
@@ -95,11 +119,13 @@ export default function LoginPage() {
         </a>
 
         <p className="eyebrow">MEMBER ACCESS / 01</p>
-        <h1>{mode === 'login' ? 'MASUK.' : 'BUAT AKUN.'}</h1>
+        <h1>{isReset ? 'RESET.' : mode === 'login' ? 'MASUK.' : 'BUAT AKUN.'}</h1>
         <p className="intro">
-          {mode === 'login'
-            ? 'Masuk untuk mengakses Oxygen Gear Equipment.'
-            : 'Lengkapi data diri untuk membuat akun Oxygen Gear Equipment.'}
+          {isReset
+            ? 'Masukkan email akun Anda. Kami akan mengirim link untuk membuat password baru.'
+            : mode === 'login'
+              ? 'Masuk untuk mengakses Oxygen Gear Equipment.'
+              : 'Lengkapi data diri untuk membuat akun Oxygen Gear Equipment.'}
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -130,8 +156,12 @@ export default function LoginPage() {
           <label htmlFor="email">Email</label>
           <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" autoComplete="email" required />
 
-          <label htmlFor="password">Password</label>
-          <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} required />
+          {!isReset && (
+            <>
+              <label htmlFor="password">Password</label>
+              <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} required />
+            </>
+          )}
 
           {mode === 'register' && (
             <>
@@ -144,15 +174,23 @@ export default function LoginPage() {
           {message && <p className="feedback success">{message}</p>}
 
           <button className="submit" type="submit" disabled={loading}>
-            {loading ? 'MEMPROSES...' : mode === 'login' ? 'MASUK' : 'DAFTAR'}
+            {loading ? 'MEMPROSES...' : isReset ? 'KIRIM LINK RESET' : mode === 'login' ? 'MASUK' : 'DAFTAR'}
           </button>
         </form>
 
         <div className="switch">
-          {mode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'}{' '}
-          <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setMessage(''); }}>
-            {mode === 'login' ? 'Daftar sekarang' : 'Masuk'}
-          </button>
+          {isReset ? (
+            <button type="button" onClick={() => switchMode('login')}>Kembali ke login</button>
+          ) : mode === 'login' ? (
+            <>
+              Belum punya akun?{' '}
+              <button type="button" onClick={() => switchMode('register')}>Daftar sekarang</button>
+              <br />
+              <button className="forgot" type="button" onClick={() => switchMode('reset')}>Lupa password?</button>
+            </>
+          ) : (
+            <>Sudah punya akun?{' '}<button type="button" onClick={() => switchMode('login')}>Masuk</button></>
+          )}
         </div>
 
         <p className="security">AUTHENTICATED BY SUPABASE · SECURE SESSION</p>
@@ -183,8 +221,9 @@ export default function LoginPage() {
         .feedback { margin: 8px 0 0; font-size: 13px; line-height: 1.5; }
         .error { color: #ff716a; }
         .success { color: #b8d9b8; }
-        .switch { margin-top: 24px; color: #8c897f; text-align: center; font-size: 13px; }
+        .switch { margin-top: 24px; color: #8c897f; text-align: center; font-size: 13px; line-height: 2; }
         .switch button { border: 0; padding: 0; background: none; color: #f7f6f3; text-decoration: underline; cursor: pointer; }
+        .switch .forgot { color: #e1261c; }
         .security { margin: 34px 0 0; color: #55534e; font: 9px monospace; letter-spacing: .04em; text-align: center; }
         @media (max-width: 520px) { .two-col { grid-template-columns: 1fr; } .auth-shell { padding: 12px; } .auth-card { max-height: calc(100vh - 24px); } }
       `}</style>
