@@ -78,11 +78,15 @@ export async function POST(request) {
       return NextResponse.json({ error: message }, { status: 500 });
     }
 
-    const { error: orderError } = await supabase.from("orders").insert({
-      user_id: user.id,
-      order_number: orderId,
-      status: "pending_payment",
-    });
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        user_id: user.id,
+        order_number: orderId,
+        status: "pending_payment",
+      })
+      .select("id")
+      .single();
 
     if (orderError) {
       console.error("Gagal menyimpan order tracking:", orderError);
@@ -90,10 +94,9 @@ export async function POST(request) {
     }
 
     const { error: eventError } = await supabase.from("order_tracking_events").insert({
-      order_id: (await supabase.from("orders").select("id").eq("order_number", orderId).single()).data?.id,
+      order_id: order.id,
       status: "pending_payment",
       description: "Pesanan dibuat dan menunggu pembayaran.",
-      location: null,
     });
 
     if (eventError) console.error("Gagal menyimpan event tracking awal:", eventError);
