@@ -1,40 +1,54 @@
 "use client";
 
-import { useState } from "react";
-
-const SAMPLE_CODE = "OCA-2026-001";
-
-const sampleMember = {
-  name: "Member Oxygen Gear",
-  event: "Pendakian Bersama — Papandayan",
-  date: "12 September 2026",
-  status: "AKTIF",
-  benefits: ["Harga khusus member", "Akses agenda event", "Prioritas informasi event berikutnya"],
-};
+import { useMemo, useState } from "react";
+import { createClient } from "../../lib/supabase-browser";
 
 export default function MemberPage() {
+  const supabase = useMemo(() => createClient(), []);
   const [code, setCode] = useState("");
   const [member, setMember] = useState(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function verifyCode(event) {
+  async function verifyCode(event) {
     event.preventDefault();
     const normalized = code.trim().toUpperCase();
+    setMember(null);
+    setError("");
 
     if (!normalized) {
-      setMember(null);
       setError("Masukkan kode member terlebih dahulu.");
       return;
     }
 
-    if (normalized === SAMPLE_CODE) {
-      setMember(sampleMember);
-      setError("");
+    setLoading(true);
+    const { data, error: queryError } = await supabase
+      .from("member_codes")
+      .select("code, member_name, event_name, event_date, status, benefits")
+      .eq("code", normalized)
+      .eq("status", "active")
+      .maybeSingle();
+    setLoading(false);
+
+    if (queryError) {
+      setError("Kode member belum dapat diperiksa. Silakan coba lagi.");
       return;
     }
 
-    setMember(null);
-    setError("Kode belum ditemukan. Untuk contoh ini, gunakan OCA-2026-001.");
+    if (!data) {
+      setError("Kode tidak valid atau sudah tidak aktif.");
+      return;
+    }
+
+    setMember({
+      name: data.member_name,
+      event: data.event_name || "Event Oxygen Gear",
+      date: data.event_date
+        ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${data.event_date}T00:00:00`))
+        : "-",
+      status: "AKTIF",
+      benefits: data.benefits || [],
+    });
   }
 
   return (
@@ -44,7 +58,7 @@ export default function MemberPage() {
           <p style={{ margin: 0, fontSize: 12, letterSpacing: ".16em", fontWeight: 700 }}>OXYGEN GEAR</p>
           <h1 style={{ margin: "12px 0 10px", fontSize: "clamp(40px, 7vw, 72px)", lineHeight: .95, letterSpacing: "-.04em" }}>MEMBER</h1>
           <p style={{ maxWidth: 560, margin: 0, color: "#66635c", lineHeight: 1.7 }}>
-            Masukkan kode yang kamu dapatkan setelah mengikuti event Oxygen Gear untuk melihat status member dan benefit kamu.
+            Masukkan kode yang kamu dapatkan setelah mengikuti event Oxygen Gear untuk memeriksa status member dan benefit kamu.
           </p>
         </div>
 
@@ -54,15 +68,16 @@ export default function MemberPage() {
             onChange={(e) => setCode(e.target.value)}
             placeholder="Contoh: OCA-2026-001"
             aria-label="Kode member"
+            autoComplete="off"
             style={{ flex: "1 1 300px", minWidth: 0, border: "1px solid #c9c5bc", padding: "15px 16px", fontSize: 14, outline: "none", textTransform: "uppercase" }}
           />
-          <button type="submit" style={{ border: 0, background: "#151513", color: "#fff", padding: "15px 24px", fontWeight: 700, letterSpacing: ".04em", cursor: "pointer" }}>
-            CEK KODE
+          <button type="submit" disabled={loading} style={{ border: 0, background: "#151513", color: "#fff", padding: "15px 24px", fontWeight: 700, letterSpacing: ".04em", cursor: loading ? "wait" : "pointer", opacity: loading ? .65 : 1 }}>
+            {loading ? "MEMERIKSA..." : "CEK KODE"}
           </button>
         </form>
 
         <div style={{ marginTop: 12, color: "#8a877f", fontSize: 12 }}>
-          Demo sementara: gunakan kode <strong style={{ color: "#151513" }}>{SAMPLE_CODE}</strong>
+          Untuk pengujian sementara, gunakan <strong style={{ color: "#151513" }}>OCA-2026-001</strong>.
         </div>
 
         {error && (
@@ -93,7 +108,7 @@ export default function MemberPage() {
         )}
 
         <p style={{ marginTop: 34, fontSize: 12, lineHeight: 1.7, color: "#77736b" }}>
-          Ini masih versi contoh. Nantinya kode akan diambil dari database berdasarkan peserta event yang benar-benar terdaftar.
+          Validasi sekarang dilakukan langsung ke database Oxygen Gear. Kode yang tidak ada atau berstatus tidak aktif tidak akan dianggap valid.
         </p>
       </section>
     </main>
