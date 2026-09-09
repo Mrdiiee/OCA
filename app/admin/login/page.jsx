@@ -42,7 +42,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    window.location.replace('/admin/pengiriman');
+    window.location.replace('/admin');
   }
 
   return (
