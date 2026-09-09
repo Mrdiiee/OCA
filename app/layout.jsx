@@ -1,5 +1,6 @@
 import Script from "next/script";
 import AdminMenu from "./admin-menu";
+import AccountMenu from "./account-menu";
 
 export const metadata = {
   title: "Oxygen Gear Equipment",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }) {
     <html lang="id">
       <body style={{ margin: 0 }}>
         {children}
+        <AccountMenu />
         <AdminMenu />
         <Script
           src="https://app.sandbox.midtrans.com/snap/snap.js"
