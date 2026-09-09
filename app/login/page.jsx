@@ -24,12 +24,7 @@ export default function LoginPage() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!active || !data.user) return;
       if (data.user.email_confirmed_at) {
-        const next = new URLSearchParams(window.location.search).get('next');
-        if (next === '/informasi-user') {
-          window.location.replace('/informasi-user');
-        } else {
-          window.location.replace('/');
-        }
+        window.location.replace('/informasi-user');
         return;
       }
       await supabase.auth.signOut();
