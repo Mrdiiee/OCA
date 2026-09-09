@@ -4,95 +4,43 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '../../lib/supabase-browser';
 
+const STATUS = { pending_payment: 'Menunggu pembayaran', paid: 'Dibayar', processing: 'Diproses', packed: 'Dikemas', shipped: 'Dikirim', in_transit: 'Dalam perjalanan', delivered: 'Selesai' };
+
 export default function AdminPage() {
   const supabase = useMemo(() => createClient(), []);
-  const [checking, setChecking] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
+  const [users, setUsers] = useState([]); const [orders, setOrders] = useState([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(''); const [error, setError] = useState(''); const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    async function checkAccess() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        window.location.replace('/admin/login');
-        return;
-      }
-
-      const { data: adminUser } = await supabase
-        .from('admin_users')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!adminUser) {
-        await supabase.auth.signOut();
-        window.location.replace('/admin/login');
-        return;
-      }
-
-      setAuthorized(true);
-      setChecking(false);
-    }
-
-    checkAccess();
-  }, [supabase]);
-
-  if (checking || !authorized) {
-    return <main style={styles.page}><p style={styles.muted}>Memeriksa akses admin...</p></main>;
+  async function load() {
+    setLoading(true); setError('');
+    try {
+      const [u, o] = await Promise.all([fetch('/api/admin/users', { cache: 'no-store' }), fetch('/api/admin/orders', { cache: 'no-store' })]);
+      const ud = await u.json(); const od = await o.json();
+      if ([u, o].some((r) => r.status === 401 || r.status === 403)) { window.location.replace('/admin/login'); return; }
+      if (!u.ok) throw new Error(ud.error || 'User gagal dimuat.'); if (!o.ok) throw new Error(od.error || 'Pesanan gagal dimuat.');
+      setUsers(ud.users || []); setOrders(od.orders || []);
+    } catch (e) { setError(e.message || 'Data admin gagal dimuat.'); } finally { setLoading(false); }
   }
+  useEffect(() => { load(); }, []);
+  async function toggleUser(user) {
+    setSaving(user.id); setError('');
+    try { const r = await fetch('/api/admin/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.id, disabled: !user.disabled }) }); const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Status user gagal diubah.'); setUsers((all) => all.map((x) => x.id === user.id ? { ...x, disabled: !x.disabled } : x)); }
+    catch (e) { setError(e.message || 'Status user gagal diubah.'); } finally { setSaving(''); }
+  }
+  const filtered = useMemo(() => users.filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase())), [users, query]);
+  const activeOrders = orders.filter((o) => o.status !== 'delivered').length;
+  const shipped = orders.filter((o) => ['shipped', 'in_transit'].includes(o.status)).length;
 
-  return (
-    <main style={styles.page}>
-      <div style={styles.shell}>
-        <header style={styles.header}>
-          <div>
-            <div style={styles.kicker}>OXYGEN GEAR / RESTRICTED ACCESS</div>
-            <h1 style={styles.title}>ADMIN.</h1>
-            <p style={styles.sub}>Pusat pengelolaan operasional OCA.</p>
-          </div>
-          <button style={styles.logout} onClick={async () => { await supabase.auth.signOut(); window.location.replace('/admin/login'); }}>KELUAR</button>
-        </header>
-
-        <section style={styles.grid}>
-          <Link href="/admin/member" style={styles.card}>
-            <span style={styles.number}>01</span>
-            <span style={styles.cardTitle}>MEMBER</span>
-            <span style={styles.cardText}>Buat kode member peserta event, salin kode, dan aktifkan/nonaktifkan kode.</span>
-            <span style={styles.cta}>KELOLA MEMBER →</span>
-          </Link>
-
-          <Link href="/admin/pengiriman" style={styles.card}>
-            <span style={styles.number}>02</span>
-            <span style={styles.cardTitle}>PENGIRIMAN</span>
-            <span style={styles.cardText}>Kelola status pesanan, kurir, nomor resi, dan estimasi pengiriman.</span>
-            <span style={styles.cta}>KELOLA PENGIRIMAN →</span>
-          </Link>
-        </section>
-
-        <nav style={styles.bottomNav}>
-          <Link href="/" style={styles.bottomLink}>BERANDA</Link>
-          <Link href="/member" style={styles.bottomLink}>HALAMAN MEMBER</Link>
-          <Link href="/status-pengiriman" style={styles.bottomLink}>STATUS PELANGGAN</Link>
-        </nav>
-      </div>
-    </main>
-  );
+  if (loading) return <main style={styles.page}><p style={styles.muted}>MEMERIKSA AKSES ADMIN...</p></main>;
+  return <main style={styles.page}><div style={styles.shell}>
+    <header style={styles.header}><div><div style={styles.kicker}>OXYGEN GEAR / CONTROL CENTER</div><h1 style={styles.title}>ADMIN.</h1><p style={styles.sub}>Kontrol user, member, pesanan, dan pengiriman dalam satu dashboard.</p></div><div style={styles.headerActions}><Link href="/admin/member" style={styles.link}>MEMBER</Link><Link href="/admin/pengiriman" style={styles.link}>PENGIRIMAN</Link><button style={styles.logout} onClick={async () => { await supabase.auth.signOut(); window.location.replace('/admin/login'); }}>KELUAR</button></div></header>
+    {error && <div style={styles.error}>{error}</div>}
+    <section style={styles.stats}><div style={styles.stat}><span>USER</span><strong>{users.length}</strong><small>akun terdaftar</small></div><div style={styles.stat}><span>AKUN AKTIF</span><strong>{users.filter((u) => !u.disabled).length}</strong><small>dapat mengakses website</small></div><div style={styles.stat}><span>PESANAN AKTIF</span><strong>{activeOrders}</strong><small>belum selesai</small></div><div style={styles.stat}><span>DIKIRIM</span><strong>{shipped}</strong><small>sedang menuju pelanggan</small></div></section>
+    <section style={styles.card}><div style={styles.sectionHead}><div><div style={styles.sectionTitle}>KONTROL USER</div><p style={styles.hint}>Cari akun dan aktifkan atau nonaktifkan akses website.</p></div><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari nama / email" style={styles.search}/></div>
+      <div>{filtered.map((user) => <article key={user.id} style={styles.userRow}><div><strong>{user.name}</strong><div style={styles.email}>{user.email}</div></div><div style={styles.meta}>{user.email_confirmed ? 'EMAIL TERVERIFIKASI' : 'EMAIL BELUM VERIFIKASI'}<br/>{new Date(user.created_at).toLocaleDateString('id-ID')}</div><span style={{ ...styles.badge, ...(user.disabled ? styles.disabled : styles.enabled) }}>{user.disabled ? 'NONAKTIF' : 'AKTIF'}</span><button disabled={saving === user.id} onClick={() => toggleUser(user)} style={styles.smallButton}>{saving === user.id ? '...' : user.disabled ? 'AKTIFKAN' : 'NONAKTIFKAN'}</button></article>)}{filtered.length === 0 && <p style={styles.empty}>User tidak ditemukan.</p>}</div>
+    </section>
+    <section style={styles.grid}><Link href="/admin/pengiriman" style={styles.feature}><span style={styles.featureKicker}>SHIPPING CONTROL</span><strong style={styles.featureTitle}>KELOLA<br/>PENGIRIMAN.</strong><span style={styles.featureText}>{orders.length} pesanan · {activeOrders} masih aktif</span><span style={styles.arrow}>→</span></Link><Link href="/admin/member" style={styles.feature}><span style={styles.featureKicker}>MEMBER CONTROL</span><strong style={styles.featureTitle}>KELOLA<br/>MEMBER.</strong><span style={styles.featureText}>Buat dan kelola kode member peserta event.</span><span style={styles.arrow}>→</span></Link></section>
+    <nav style={styles.bottomNav}><Link href="/" style={styles.bottomLink}>BERANDA</Link><Link href="/member" style={styles.bottomLink}>HALAMAN MEMBER</Link><Link href="/status-pengiriman" style={styles.bottomLink}>STATUS PELANGGAN</Link></nav>
+  </div></main>;
 }
 
-const styles = {
-  page: { minHeight: '100vh', background: '#0b0b0b', color: '#f4f4f4', padding: '42px 20px', fontFamily: 'Arial, sans-serif' },
-  shell: { maxWidth: 1100, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20, borderBottom: '1px solid #292929', paddingBottom: 24, marginBottom: 24 },
-  kicker: { fontSize: 10, letterSpacing: 2.5, color: '#8f8f8f', marginBottom: 10 },
-  title: { margin: 0, fontSize: 'clamp(58px, 10vw, 100px)', lineHeight: .85, letterSpacing: -4 },
-  sub: { color: '#9d9d9d', margin: '16px 0 0', fontSize: 14 },
-  logout: { background: 'transparent', border: '1px solid #555', color: '#fff', padding: '10px 14px', cursor: 'pointer', fontSize: 10, letterSpacing: 1 },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 },
-  card: { display: 'flex', flexDirection: 'column', minHeight: 300, padding: 28, border: '1px solid #292929', background: '#111', color: '#fff', textDecoration: 'none' },
-  number: { color: '#e1261c', font: '11px monospace', letterSpacing: 1, marginBottom: 65 },
-  cardTitle: { fontSize: 34, fontWeight: 800, letterSpacing: 1 },
-  cardText: { color: '#999', lineHeight: 1.6, fontSize: 13, maxWidth: 420, marginTop: 12 },
-  cta: { marginTop: 'auto', paddingTop: 24, fontSize: 10, fontWeight: 800, letterSpacing: 1.5 },
-  bottomNav: { display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 24 },
-  bottomLink: { color: '#777', textDecoration: 'none', fontSize: 10, letterSpacing: 1 },
-  muted: { color: '#777', padding: 40, textAlign: 'center' },
-};
+const styles = { page:{minHeight:'100vh',background:'#0b0b0a',color:'#f7f6f3',padding:'40px 20px',fontFamily:'Arial,Helvetica,sans-serif'},shell:{maxWidth:1120,margin:'0 auto'},header:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:25,borderBottom:'1px solid #302e29',paddingBottom:25,marginBottom:22},kicker:{fontSize:10,letterSpacing:2,color:'#8b887f',marginBottom:8},title:{fontSize:'clamp(55px,9vw,95px)',lineHeight:.85,margin:0,letterSpacing:-4},sub:{color:'#aaa69d',maxWidth:620,lineHeight:1.5,margin:'14px 0 0'},headerActions:{display:'flex',alignItems:'center',gap:15,flexWrap:'wrap'},link:{color:'#aaa69d',textDecoration:'none',fontSize:10,letterSpacing:1},logout:{background:'transparent',border:'1px solid #555',color:'#fff',padding:'10px 14px',cursor:'pointer',fontSize:10,letterSpacing:1},error:{padding:14,border:'1px solid #7c4b47',background:'#17100f',color:'#ff8178',marginBottom:18,fontSize:13},stats:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18},stat:{border:'1px solid #302e29',background:'#11110f',padding:20},card:{border:'1px solid #302e29',background:'#11110f',padding:24,marginBottom:18},statSpan:{fontSize:9},sectionHead:{display:'flex',justifyContent:'space-between',gap:20,alignItems:'center',paddingBottom:18,borderBottom:'1px solid #25231f'},sectionTitle:{fontSize:12,letterSpacing:2,fontWeight:700},hint:{fontSize:12,color:'#77736b',margin:'7px 0 0'},search:{width:260,maxWidth:'100%',border:'1px solid #3a3731',background:'#0b0b0a',color:'#fff',padding:'11px 12px',outline:'none'},userRow:{display:'grid',gridTemplateColumns:'1.5fr 1.2fr auto auto',gap:15,alignItems:'center',padding:'16px 0',borderBottom:'1px solid #25231f',fontSize:12},email:{fontSize:11,color:'#77736b',marginTop:5},meta:{fontSize:9,color:'#77736b',fontFamily:'monospace',lineHeight:1.5},badge:{padding:'6px 8px',fontSize:9,letterSpacing:1,fontWeight:700},enabled:{background:'#18351e',color:'#9cffaa'},disabled:{background:'#333',color:'#aaa'},smallButton:{background:'transparent',border:'1px solid #444',color:'#ddd',padding:'8px 10px',fontSize:9,letterSpacing:1,cursor:'pointer'},empty:{color:'#777',fontSize:13},grid:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18},feature:{position:'relative',border:'1px solid #302e29',background:'#11110f',padding:28,minHeight:210,textDecoration:'none',color:'#f7f6f3',display:'flex',flexDirection:'column'},featureKicker:{fontSize:9,letterSpacing:2,color:'#8b887f',marginBottom:22},featureTitle:{fontSize:38,lineHeight:1},featureText:{color:'#8b887f',fontSize:12,marginTop:'auto',paddingRight:35},arrow:{position:'absolute',right:25,bottom:20,fontSize:25},bottomNav:{display:'flex',gap:18,flexWrap:'wrap',marginTop:24},bottomLink:{color:'#777',textDecoration:'none',fontSize:10,letterSpacing:1},muted:{color:'#777',padding:40,textAlign:'center'}};
