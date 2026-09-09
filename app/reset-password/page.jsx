@@ -46,10 +46,11 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    setMessage('Password berhasil diubah. Anda sekarang bisa masuk dengan password baru.');
+    setMessage('Password berhasil diubah. Anda akan diarahkan ke halaman login.');
     setPassword('');
     setConfirmPassword('');
-    setSaving(false);
+    await supabase.auth.signOut();
+    setTimeout(() => window.location.replace('/login'), 900);
   };
 
   return (
