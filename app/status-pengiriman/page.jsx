@@ -27,63 +27,85 @@ export default function StatusPengirimanPage() {
   const [orders, setOrders] = useState([]);
   const [events, setEvents] = useState({});
   const [loading, setLoading] = useState(true);
+  const [creatingTest, setCreatingTest] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  async function loadOrders() {
+    setLoading(true);
+    setError('');
+
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData?.user;
+
+    if (!user) {
+      window.location.replace('/login?next=/status-pengiriman');
+      return;
+    }
+
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .select('id, order_number, status, courier, tracking_number, estimated_delivery, created_at, updated_at')
+      .order('created_at', { ascending: false });
+
+    if (orderError) {
+      setError('Status pesanan belum dapat dimuat. Silakan coba lagi.');
+      setLoading(false);
+      return;
+    }
+
+    const orderIds = (orderData || []).map((order) => order.id);
+    let eventData = [];
+
+    if (orderIds.length) {
+      const result = await supabase
+        .from('order_tracking_events')
+        .select('id, order_id, status, description, location, occurred_at')
+        .in('order_id', orderIds)
+        .order('occurred_at', { ascending: false });
+      if (result.error) {
+        console.error('Gagal memuat tracking events:', result.error);
+      } else {
+        eventData = result.data || [];
+      }
+    }
+
+    const grouped = {};
+    eventData.forEach((event) => {
+      if (!grouped[event.order_id]) grouped[event.order_id] = [];
+      grouped[event.order_id].push(event);
+    });
+
+    setOrders(orderData || []);
+    setEvents(grouped);
+    setLoading(false);
+  }
 
   useEffect(() => {
     let active = true;
-
-    async function loadOrders() {
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData?.user;
-
+    (async () => {
       if (!active) return;
-      if (!user) {
-        window.location.replace('/login?next=/status-pengiriman');
-        return;
-      }
-
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select('id, order_number, status, courier, tracking_number, estimated_delivery, created_at, updated_at')
-        .order('created_at', { ascending: false });
-
-      if (!active) return;
-      if (orderError) {
-        setError('Status pesanan belum dapat dimuat. Silakan coba lagi.');
-        setLoading(false);
-        return;
-      }
-
-      const orderIds = (orderData || []).map((order) => order.id);
-      let eventData = [];
-
-      if (orderIds.length) {
-        const result = await supabase
-          .from('order_tracking_events')
-          .select('id, order_id, status, description, location, occurred_at')
-          .in('order_id', orderIds)
-          .order('occurred_at', { ascending: false });
-        if (result.error) {
-          console.error('Gagal memuat tracking events:', result.error);
-        } else {
-          eventData = result.data || [];
-        }
-      }
-
-      const grouped = {};
-      eventData.forEach((event) => {
-        if (!grouped[event.order_id]) grouped[event.order_id] = [];
-        grouped[event.order_id].push(event);
-      });
-
-      setOrders(orderData || []);
-      setEvents(grouped);
-      setLoading(false);
-    }
-
-    loadOrders();
+      await loadOrders();
+    })();
     return () => { active = false; };
   }, [supabase]);
+
+  async function createTestOrder() {
+    setCreatingTest(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/orders/test', { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Order simulasi gagal dibuat.');
+      setNotice(`Order simulasi ${result.orderNumber} berhasil dibuat.`);
+      await loadOrders();
+    } catch (err) {
+      setError(err.message || 'Order simulasi gagal dibuat.');
+    } finally {
+      setCreatingTest(false);
+    }
+  }
 
   if (loading) return <main className="page"><p className="loading">Memuat status pengiriman...</p></main>;
 
@@ -99,7 +121,19 @@ export default function StatusPengirimanPage() {
         <h1>STATUS<br /><em>PENGIRIMAN.</em></h1>
         <p className="intro">Pantau pesanan Oxygen Gear kamu dari pembayaran sampai paket tiba.</p>
 
-        {error && <div className="notice">{error}</div>}
+        {error && <div className="notice error">{error}</div>}
+        {notice && <div className="notice success">{notice}</div>}
+
+        <div className="test-tools card">
+          <div>
+            <div className="label">MODE PENGUJIAN</div>
+            <strong>Belum ingin membayar? Buat order simulasi.</strong>
+            <p>Order ini hanya untuk menguji tampilan status dan timeline pengiriman tanpa transaksi Midtrans.</p>
+          </div>
+          <button className="btn" onClick={createTestOrder} disabled={creatingTest}>
+            {creatingTest ? 'MEMBUAT...' : 'BUAT ORDER SIMULASI'}
+          </button>
+        </div>
 
         {!error && orders.length === 0 && (
           <section className="empty card">
@@ -169,8 +203,8 @@ export default function StatusPengirimanPage() {
         .card{border:1px solid #302e29;background:#11110f}.orders{display:grid;gap:18px}.order{padding:24px}.order-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:1px solid #25231f;padding-bottom:20px}.label{font:10px monospace;color:#8b887f;letter-spacing:.08em}.order h2{margin:8px 0 0;font:700 22px monospace;letter-spacing:.02em}.status{padding:8px 10px;border:1px solid #3c3933;color:#d8d5cd;font:10px monospace;text-transform:uppercase}.status-delivered{border-color:#637c63;color:#b9d5b9}.status-cancelled{border-color:#7c4b47;color:#ff8178}.status-shipped,.status-in_transit{border-color:#695d40;color:#e3c88a}
         .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;padding:20px 0;border-bottom:1px solid #25231f}.meta div{display:grid;gap:7px}.meta span{font:10px monospace;color:#8b887f;text-transform:uppercase}.meta strong{font-size:13px;line-height:1.45}.mono{font-family:monospace;overflow-wrap:anywhere}
         .timeline{padding:22px 0 8px}.timeline>.label{margin-bottom:18px}.event{position:relative;display:grid;grid-template-columns:14px 1fr;gap:14px;padding:0 0 20px}.dot{width:10px;height:10px;border:1px solid #68645c;margin-top:3px;border-radius:50%;background:#11110f}.dot.active{background:#e1261c;border-color:#e1261c;box-shadow:0 0 0 4px rgba(225,38,28,.08)}.event strong{font-size:13px}.event p{margin:5px 0;color:#d8d5cd;font-size:13px;line-height:1.5}.event small{color:#77736b;font-size:11px}.muted{color:#77736b;font-size:13px}
-        .order-foot{display:flex;justify-content:space-between;gap:15px;padding-top:15px;border-top:1px solid #25231f;color:#77736b;font:10px monospace}.tracking{color:#aaa69d}.empty{padding:45px;text-align:center}.empty-mark{display:inline-grid;place-items:center;width:42px;height:42px;border:1px solid #3c3933;color:#e1261c;font-size:25px}.empty h2{font-size:24px;margin:18px 0 8px}.empty p{max-width:500px;margin:0 auto 24px;color:#aaa69d;line-height:1.6;font-size:13px}.btn{display:inline-block;padding:12px 16px;border:1px solid #f7f6f3;color:#f7f6f3;text-decoration:none;font-weight:800;font-size:11px;letter-spacing:.05em}.btn:hover{background:#e1261c;border-color:#e1261c}.notice{border:1px solid #7c4b47;background:#17100f;color:#ff8178;padding:15px;font-size:13px;margin-bottom:18px}.loading{padding:40px 20px;color:#aaa69d}
-        @media(max-width:700px){.content{padding-top:55px}.order-head{flex-direction:column}.meta{grid-template-columns:1fr}.order-foot{flex-direction:column}.back{font-size:12px}}
+        .order-foot{display:flex;justify-content:space-between;gap:15px;padding-top:15px;border-top:1px solid #25231f;color:#77736b;font:10px monospace}.tracking{color:#aaa69d}.empty{padding:45px;text-align:center}.empty-mark{display:inline-grid;place-items:center;width:42px;height:42px;border:1px solid #3c3933;color:#e1261c;font-size:25px}.empty h2{font-size:24px;margin:18px 0 8px}.empty p{max-width:500px;margin:0 auto 24px;color:#aaa69d;line-height:1.6;font-size:13px}.btn{display:inline-block;padding:12px 16px;border:1px solid #f7f6f3;color:#f7f6f3;background:transparent;text-decoration:none;font-weight:800;font-size:11px;letter-spacing:.05em;cursor:pointer}.btn:hover:not(:disabled){background:#e1261c;border-color:#e1261c}.btn:disabled{opacity:.5;cursor:wait}.notice{border:1px solid #7c4b47;background:#17100f;color:#ff8178;padding:15px;font-size:13px;margin-bottom:18px}.notice.success{border-color:#637c63;background:#10150f;color:#b9d5b9}.test-tools{display:flex;justify-content:space-between;align-items:center;gap:25px;padding:18px 20px;margin-bottom:18px}.test-tools strong{display:block;margin-top:6px;font-size:13px}.test-tools p{margin:6px 0 0;color:#77736b;font-size:12px;line-height:1.5}.loading{padding:40px 20px;color:#aaa69d}
+        @media(max-width:700px){.content{padding-top:55px}.order-head{flex-direction:column}.meta{grid-template-columns:1fr}.order-foot{flex-direction:column}.back{font-size:12px}.test-tools{flex-direction:column;align-items:flex-start}}
       `}</style>
     </main>
   );
