@@ -10,7 +10,6 @@ export default function AccountMenu() {
 
   useEffect(() => {
     let active = true;
-
     supabase.auth.getUser().then(({ data }) => {
       if (active) setUser(data.user ?? null);
     });
@@ -24,24 +23,6 @@ export default function AccountMenu() {
       listener.subscription.unsubscribe();
     };
   }, [supabase]);
-
-  useEffect(() => {
-    const handleHeaderAccountClick = (event) => {
-      const button = event.target.closest('.nav-actions .icon-btn');
-      if (!button) return;
-
-      const svg = button.querySelector('svg');
-      const isUserIcon = svg?.querySelector('circle[cx="12"][cy="8"]');
-      if (!isUserIcon) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      window.location.assign(user ? '/informasi-user' : '/login?next=/informasi-user');
-    };
-
-    document.addEventListener('click', handleHeaderAccountClick, true);
-    return () => document.removeEventListener('click', handleHeaderAccountClick, true);
-  }, [user]);
 
   if (!user) return null;
 
