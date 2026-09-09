@@ -1,5 +1,4 @@
 import Script from "next/script";
-import AdminMenu from "./admin-menu";
 import AccountMenu from "./account-menu";
 
 export const metadata = {
@@ -14,7 +13,6 @@ export default function RootLayout({ children }) {
       <body style={{ margin: 0 }}>
         {children}
         <AccountMenu />
-        <AdminMenu />
         <Script
           src="https://app.sandbox.midtrans.com/snap/snap.js"
           data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
