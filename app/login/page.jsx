@@ -6,13 +6,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../lib/supabase-browser';
 
 export default function LoginPage() {
-  ...
-  'use client';
-
-import { useEffect, useMemo, useState } from 'react';
-import { createClient } from '../../lib/supabase-browser';
-
-export default function LoginPage() {
   const supabase = useMemo(() => createClient(), []);
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
