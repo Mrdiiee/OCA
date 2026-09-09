@@ -103,10 +103,8 @@ export default function OxygenGearSite() {
 
   const total = useMemo(() => cart.reduce((sum, p) => sum + p.price * p.qty, 0), [cart]);
   const itemCount = cart.reduce((sum, p) => sum + p.qty, 0);
-  const [paying, setPaying] = useState(false);
-const [payError, setPayError] = useState("");
 
-const submitOrder = async (e) => {
+  const submitOrder = async (e) => {
   e.preventDefault();
   setPaying(true);
   setPayError("");
