@@ -1,6 +1,30 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
 const MIDTRANS_SNAP_URL = "https://app.sandbox.midtrans.com/snap/v1/transactions";
+
+async function getSupabase() {
+  const cookieStore = cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+          } catch {
+            // Cookie writes are not required for this read/insert flow.
+          }
+        },
+      },
+    }
+  );
+}
 
 export async function POST(request) {
   try {
@@ -28,6 +52,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "MIDTRANS_SERVER_KEY belum diatur di environment variable." }, { status: 500 });
     }
 
+    const supabase = await getSupabase();
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData?.user;
+
+    if (!user) {
+      return NextResponse.json({ error: "Silakan login terlebih dahulu agar pesanan dapat dilacak." }, { status: 401 });
+    }
+
     const orderId = `OXY-${Date.now()}`;
     const authHeader = "Basic " + Buffer.from(`${serverKey}:`).toString("base64");
     const midtransRes = await fetch(MIDTRANS_SNAP_URL, {
@@ -46,8 +78,29 @@ export async function POST(request) {
       return NextResponse.json({ error: message }, { status: 500 });
     }
 
+    const { error: orderError } = await supabase.from("orders").insert({
+      user_id: user.id,
+      order_number: orderId,
+      status: "pending_payment",
+    });
+
+    if (orderError) {
+      console.error("Gagal menyimpan order tracking:", orderError);
+      return NextResponse.json({ error: "Transaksi berhasil dibuat, tetapi data pelacakan pesanan gagal disimpan." }, { status: 500 });
+    }
+
+    const { error: eventError } = await supabase.from("order_tracking_events").insert({
+      order_id: (await supabase.from("orders").select("id").eq("order_number", orderId).single()).data?.id,
+      status: "pending_payment",
+      description: "Pesanan dibuat dan menunggu pembayaran.",
+      location: null,
+    });
+
+    if (eventError) console.error("Gagal menyimpan event tracking awal:", eventError);
+
     return NextResponse.json({ token: data.token, orderId });
   } catch (err) {
+    console.error("Checkout error:", err);
     return NextResponse.json({ error: "Terjadi kesalahan server saat memproses pesanan." }, { status: 500 });
   }
 }
