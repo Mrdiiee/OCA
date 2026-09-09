@@ -1,0 +1,48 @@
+name: Fix duplicate payment state
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Remove duplicate payment state declarations
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("app/page.jsx")
+          text = path.read_text()
+          duplicate = '''  const [paying, setPaying] = useState(false);\nconst [payError, setPayError] = useState("");\n\nconst submitOrder = async (e) => {'''
+          replacement = '''\n  const submitOrder = async (e) => {'''
+
+          if duplicate in text:
+              text = text.replace(duplicate, replacement, 1)
+              path.write_text(text)
+              print("Removed duplicate payment state declarations.")
+          else:
+              print("No duplicate payment state declarations found; nothing to change.")
+          PY
+
+      - name: Commit and push fix
+        shell: bash
+        run: |
+          if git diff --quiet -- app/page.jsx; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.jsx
+          git commit -m "fix: remove duplicate payment state declarations"
+          git push
