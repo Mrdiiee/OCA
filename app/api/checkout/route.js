@@ -84,6 +84,7 @@ export async function POST(request) {
         user_id: user.id,
         order_number: orderId,
         status: "pending_payment",
+        total_amount: total,
       })
       .select("id")
       .single();
