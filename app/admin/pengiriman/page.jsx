@@ -1,0 +1,149 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { createClient } from '../../../lib/supabase-browser';
+
+const LABELS = {
+  pending_payment: 'Menunggu pembayaran',
+  paid: 'Pembayaran berhasil',
+  processing: 'Pesanan diproses',
+  packed: 'Pesanan dikemas',
+  shipped: 'Pesanan dikirim',
+  in_transit: 'Dalam perjalanan',
+  delivered: 'Pesanan sampai',
+};
+
+const NEXT = {
+  pending_payment: 'paid',
+  paid: 'processing',
+  processing: 'packed',
+  packed: 'shipped',
+  shipped: 'in_transit',
+  in_transit: 'delivered',
+};
+
+export default function AdminPengirimanPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState('');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [forms, setForms] = useState({});
+
+  async function load() {
+    setLoading(true);
+    setError('');
+    const response = await fetch('/api/admin/orders', { cache: 'no-store' });
+    const result = await response.json();
+    if (!response.ok) {
+      setError(result.error || 'Pesanan gagal dimuat.');
+      setLoading(false);
+      return;
+    }
+    setOrders(result.orders || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function formFor(order) {
+    return forms[order.id] || {
+      courier: order.courier || 'JNE',
+      trackingNumber: order.tracking_number || '',
+      estimatedDelivery: order.estimated_delivery || '',
+      location: '',
+    };
+  }
+
+  function setForm(orderId, key, value) {
+    setForms((current) => ({
+      ...current,
+      [orderId]: { ...(current[orderId] || {}), [key]: value },
+    }));
+  }
+
+  async function updateOrder(order) {
+    const status = NEXT[order.status];
+    if (!status) return;
+    const form = formFor(order);
+    if (status === 'shipped' && (!form.courier || !form.trackingNumber || !form.estimatedDelivery)) {
+      setError('Untuk mengirim pesanan, isi kurir, nomor resi, dan estimasi tiba.');
+      return;
+    }
+
+    setSaving(order.id);
+    setError('');
+    setNotice('');
+    const response = await fetch('/api/admin/orders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: order.id, status, ...form }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      setError(result.error || 'Status gagal diperbarui.');
+    } else {
+      setNotice(`${order.order_number}: ${LABELS[status]}`);
+      await load();
+    }
+    setSaving('');
+  }
+
+  if (loading) return <main className="page"><p className="loading">Memuat pesanan admin...</p></main>;
+
+  return (
+    <main className="page">
+      <header className="topbar">
+        <a href="/" className="brand"><span className="mark" />OXYGEN GEAR / ADMIN</a>
+        <div className="links"><a href="/status-pengiriman">Status pelanggan</a><a href="/">Beranda</a></div>
+      </header>
+
+      <section className="content">
+        <p className="eyebrow">ADMIN / SHIPPING CONTROL</p>
+        <h1>KELOLA<br /><em>PENGIRIMAN.</em></h1>
+        <p className="intro">Dorong pesanan satu tahap demi satu tahap. Setiap perubahan otomatis masuk ke timeline pelanggan.</p>
+
+        {error && <div className="notice error">{error}</div>}
+        {notice && <div className="notice success">{notice}</div>}
+
+        {orders.length === 0 ? (
+          <section className="empty card"><h2>Belum ada pesanan.</h2><p>Buat order melalui checkout atau order simulasi untuk mulai menguji alurnya.</p></section>
+        ) : (
+          <div className="orders">
+            {orders.map((order) => {
+              const form = formFor(order);
+              const next = NEXT[order.status];
+              return (
+                <article className="card order" key={order.id}>
+                  <div className="head">
+                    <div><span className="label">NOMOR PESANAN</span><h2>{order.order_number}</h2></div>
+                    <span className={`status status-${order.status}`}>{LABELS[order.status] || order.status}</span>
+                  </div>
+                  <div className="progress">
+                    {Object.keys(NEXT).map((key) => <span key={key} className={Object.keys(NEXT).indexOf(key) <= Object.keys(NEXT).indexOf(order.status) ? 'done' : ''}>{LABELS[key]}</span>)}
+                    <span className={order.status === 'delivered' ? 'done' : ''}>{LABELS.delivered}</span>
+                  </div>
+                  {order.status === 'packed' && (
+                    <div className="shipping-form">
+                      <div><label>Kurir<select value={form.courier} onChange={(e) => setForm(order.id, 'courier', e.target.value)}><option>JNE</option><option>SiCepat</option><option>J&T</option><option>Pos Indonesia</option><option>Gojek</option><option>Grab</option><option>Oxygen Express</option></select></label></div>
+                      <div><label>Nomor resi<input value={form.trackingNumber} onChange={(e) => setForm(order.id, 'trackingNumber', e.target.value)} placeholder="Masukkan nomor resi" /></label></div>
+                      <div><label>Estimasi tiba<input type="date" value={form.estimatedDelivery} onChange={(e) => setForm(order.id, 'estimatedDelivery', e.target.value)} /></label></div>
+                      <div><label>Lokasi awal<input value={form.location} onChange={(e) => setForm(order.id, 'location', e.target.value)} placeholder="Contoh: Jakarta" /></label></div>
+                    </div>
+                  )}
+                  <div className="info"><span>Kurir: <b>{order.courier || '-'}</b></span><span>Resi: <b>{order.tracking_number || '-'}</b></span><span>Dibuat: <b>{new Date(order.created_at).toLocaleString('id-ID')}</b></span></div>
+                  {next ? <button className="btn" disabled={saving === order.id} onClick={() => updateOrder(order)}>{saving === order.id ? 'MENYIMPAN...' : `LANJUT: ${LABELS[next].toUpperCase()}`}</button> : <div className="complete">✓ PESANAN SELESAI</div>}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <style jsx>{`
+        :global(*){box-sizing:border-box}:global(body){margin:0;background:#0b0b0a}.page{min-height:100vh;background:#0b0b0a;color:#f7f6f3;font-family:Arial,Helvetica,sans-serif}.topbar{display:flex;justify-content:space-between;align-items:center;padding:20px clamp(16px,5vw,60px);border-bottom:1px solid #302e29;position:sticky;top:0;background:rgba(11,11,10,.96);z-index:5}.brand{color:#f7f6f3;text-decoration:none;font-weight:800;letter-spacing:.05em}.mark{display:inline-block;width:13px;height:13px;background:#e1261c;margin-right:9px}.links{display:flex;gap:20px}.links a{color:#aaa69d;text-decoration:none;font-size:12px}.links a:hover{color:#e1261c}.content{max-width:1100px;margin:auto;padding:70px 20px 100px}.eyebrow,.label{font:10px monospace;color:#8b887f;letter-spacing:.08em}.eyebrow{margin-bottom:18px}h1{font-size:clamp(54px,9vw,100px);line-height:.88;letter-spacing:-.04em;margin:0 0 25px}h1 em{font-style:normal;color:#e1261c}.intro{max-width:650px;color:#d8d5cd;line-height:1.65;margin-bottom:40px}.orders{display:grid;gap:18px}.card{border:1px solid #302e29;background:#11110f}.order{padding:24px}.head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.head h2{margin:8px 0 0;font:700 21px monospace}.status{padding:8px 10px;border:1px solid #3c3933;font:10px monospace;color:#d8d5cd}.status-delivered{border-color:#637c63;color:#b9d5b9}.status-shipped,.status-in_transit{border-color:#695d40;color:#e3c88a}.progress{display:flex;gap:5px;margin:24px 0;overflow:auto;padding-bottom:5px}.progress span{white-space:nowrap;border:1px solid #2b2925;padding:7px 8px;font:9px monospace;color:#66625b}.progress span.done{border-color:#6b302c;color:#e1261c}.shipping-form{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border-top:1px solid #25231f;border-bottom:1px solid #25231f;padding:18px 0;margin-bottom:16px}label{display:grid;gap:7px;font:10px monospace;color:#8b887f;text-transform:uppercase}input,select{width:100%;border:1px solid #3a3731;background:#0b0b0a;color:#f7f6f3;padding:11px;font:12px Arial}input:focus,select:focus{outline:1px solid #e1261c}.info{display:flex;flex-wrap:wrap;gap:18px;color:#77736b;font:11px monospace;margin-bottom:18px}.info b{color:#d8d5cd;font-weight:400}.btn{padding:12px 16px;background:transparent;border:1px solid #f7f6f3;color:#f7f6f3;font-weight:800;font-size:11px;cursor:pointer}.btn:hover:not(:disabled){background:#e1261c;border-color:#e1261c}.btn:disabled{opacity:.5}.complete{color:#b9d5b9;border:1px solid #637c63;display:inline-block;padding:12px 16px;font:11px monospace}.notice{padding:14px;margin-bottom:18px;border:1px solid #7c4b47;color:#ff8178;background:#17100f;font-size:13px}.notice.success{border-color:#637c63;color:#b9d5b9;background:#10150f}.empty{padding:40px;text-align:center}.empty h2{margin:0 0 10px}.empty p{color:#aaa69d}.loading{padding:40px 20px;color:#aaa69d}@media(max-width:800px){.shipping-form{grid-template-columns:1fr 1fr}}@media(max-width:600px){.links{gap:10px}.links a:first-child{display:none}.head{flex-direction:column}.shipping-form{grid-template-columns:1fr}.content{padding-top:50px}}
+      `}</style>
+    </main>
+  );
+}
