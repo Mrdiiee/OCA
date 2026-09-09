@@ -15,23 +15,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Remove duplicate payment state declarations
+      - name: Repair landing page syntax
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-
           path = Path("app/page.jsx")
           text = path.read_text()
-          duplicate = '''  const [paying, setPaying] = useState(false);\nconst [payError, setPayError] = useState("");\n\nconst submitOrder = async (e) => {'''
-          replacement = '''\n  const submitOrder = async (e) => {'''
-
-          if duplicate in text:
-              text = text.replace(duplicate, replacement, 1)
-              path.write_text(text)
-              print("Removed duplicate payment state declarations.")
+          if not text.rstrip().endswith("}"):
+              path.write_text(text.rstrip() + "\n}\n")
+              print("Appended missing component closing brace.")
           else:
-              print("No duplicate payment state declarations found; nothing to change.")
+              print("Landing page already has a closing brace.")
           PY
 
       - name: Commit and push fix
@@ -44,5 +39,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/page.jsx
-          git commit -m "fix: remove duplicate payment state declarations"
+          git commit -m "fix: close landing page syntax"
           git push
