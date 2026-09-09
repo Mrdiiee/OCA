@@ -8,6 +8,12 @@ export default function LoginPage() {
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -33,9 +39,24 @@ export default function LoginPage() {
     setMessage('');
 
     if (mode === 'register') {
+      if (password !== confirmPassword) {
+        setError('Konfirmasi password tidak sama.');
+        setLoading(false);
+        return;
+      }
+
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone,
+            address,
+            city,
+            postal_code: postalCode,
+          },
+        },
       });
 
       if (signUpError) {
@@ -54,10 +75,7 @@ export default function LoginPage() {
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (signInError) {
       setError(signInError.message);
@@ -81,32 +99,46 @@ export default function LoginPage() {
         <p className="intro">
           {mode === 'login'
             ? 'Masuk untuk mengakses Oxygen Gear Equipment.'
-            : 'Buat akun untuk mulai menggunakan Oxygen Gear Equipment.'}
+            : 'Lengkapi data diri untuk membuat akun Oxygen Gear Equipment.'}
         </p>
 
         <form onSubmit={handleSubmit}>
+          {mode === 'register' && (
+            <>
+              <label htmlFor="fullName">Nama lengkap</label>
+              <input id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nama lengkap" autoComplete="name" required />
+
+              <label htmlFor="phone">Nomor HP</label>
+              <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" autoComplete="tel" required />
+
+              <label htmlFor="address">Alamat lengkap</label>
+              <textarea id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Jalan, nomor rumah, kecamatan" autoComplete="street-address" rows={3} required />
+
+              <div className="two-col">
+                <div>
+                  <label htmlFor="city">Kota / Kabupaten</label>
+                  <input id="city" type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Kota" autoComplete="address-level2" required />
+                </div>
+                <div>
+                  <label htmlFor="postalCode">Kode pos</label>
+                  <input id="postalCode" type="text" inputMode="numeric" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="12345" autoComplete="postal-code" required />
+                </div>
+              </div>
+            </>
+          )}
+
           <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="nama@email.com"
-            autoComplete="email"
-            required
-          />
+          <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" autoComplete="email" required />
 
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Minimal 6 karakter"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            minLength={6}
-            required
-          />
+          <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} required />
+
+          {mode === 'register' && (
+            <>
+              <label htmlFor="confirmPassword">Konfirmasi password</label>
+              <input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ulangi password" autoComplete="new-password" minLength={6} required />
+            </>
+          )}
 
           {error && <p className="feedback error">{error}</p>}
           {message && <p className="feedback success">{message}</p>}
@@ -118,14 +150,7 @@ export default function LoginPage() {
 
         <div className="switch">
           {mode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'}{' '}
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === 'login' ? 'register' : 'login');
-              setError('');
-              setMessage('');
-            }}
-          >
+          <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setMessage(''); }}>
             {mode === 'login' ? 'Daftar sekarang' : 'Masuk'}
           </button>
         </div>
@@ -136,129 +161,32 @@ export default function LoginPage() {
       <style jsx>{`
         :global(*) { box-sizing: border-box; }
         :global(body) { margin: 0; background: #0b0b0a; }
-        .auth-shell {
-          min-height: 100vh;
-          position: relative;
-          overflow: hidden;
-          display: grid;
-          place-items: center;
-          padding: 24px;
-          background: #0b0b0a;
-          color: #f7f6f3;
-          font-family: Arial, sans-serif;
-        }
-        .auth-shell::before,
-        .auth-shell::after {
-          content: '';
-          position: absolute;
-          width: 75vw;
-          height: 75vw;
-          border: 1px solid #2e2c28;
-          border-radius: 50%;
-          opacity: .65;
-          pointer-events: none;
-        }
+        .auth-shell { min-height: 100vh; position: relative; overflow: hidden; display: grid; place-items: center; padding: 24px; background: #0b0b0a; color: #f7f6f3; font-family: Arial, sans-serif; }
+        .auth-shell::before, .auth-shell::after { content: ''; position: absolute; width: 75vw; height: 75vw; border: 1px solid #2e2c28; border-radius: 50%; opacity: .65; pointer-events: none; }
         .auth-shell::before { transform: translate(-30%, 35%); }
         .auth-shell::after { transform: translate(35%, -35%); }
-        .auth-card {
-          position: relative;
-          z-index: 2;
-          width: min(460px, 100%);
-          border: 1px solid #2e2c28;
-          background: rgba(14, 14, 13, .96);
-          padding: clamp(26px, 6vw, 48px);
-          box-shadow: 0 30px 90px rgba(0, 0, 0, .45);
-        }
-        .brand {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          color: #f7f6f3;
-          text-decoration: none;
-          font-weight: 800;
-          letter-spacing: .05em;
-          font-size: 15px;
-        }
-        .brand-mark {
-          width: 13px;
-          height: 13px;
-          background: #e1261c;
-          display: inline-block;
-        }
-        .eyebrow {
-          margin: 48px 0 12px;
-          color: #8c897f;
-          font: 11px monospace;
-          letter-spacing: .08em;
-        }
-        h1 {
-          margin: 0;
-          font-size: clamp(52px, 12vw, 76px);
-          line-height: .9;
-          letter-spacing: -.04em;
-        }
-        .intro {
-          color: #d9d7d0;
-          line-height: 1.6;
-          margin: 20px 0 30px;
-          font-size: 14px;
-        }
+        .auth-card { position: relative; z-index: 2; width: min(520px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border: 1px solid #2e2c28; background: rgba(14, 14, 13, .96); padding: clamp(26px, 6vw, 48px); box-shadow: 0 30px 90px rgba(0, 0, 0, .45); }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: #f7f6f3; text-decoration: none; font-weight: 800; letter-spacing: .05em; font-size: 15px; }
+        .brand-mark { width: 13px; height: 13px; background: #e1261c; display: inline-block; }
+        .eyebrow { margin: 48px 0 12px; color: #8c897f; font: 11px monospace; letter-spacing: .08em; }
+        h1 { margin: 0; font-size: clamp(52px, 12vw, 76px); line-height: .9; letter-spacing: -.04em; }
+        .intro { color: #d9d7d0; line-height: 1.6; margin: 20px 0 30px; font-size: 14px; }
         form { display: grid; gap: 10px; }
-        label {
-          color: #8c897f;
-          font: 11px monospace;
-          text-transform: uppercase;
-          margin-top: 8px;
-        }
-        input {
-          width: 100%;
-          border: 1px solid #2e2c28;
-          background: #0b0b0a;
-          color: #f7f6f3;
-          padding: 14px;
-          outline: none;
-          border-radius: 0;
-        }
-        input:focus { border-color: #e1261c; }
-        .submit {
-          margin-top: 12px;
-          border: 1px solid #f7f6f3;
-          background: #f7f6f3;
-          color: #0b0b0a;
-          padding: 14px 18px;
-          font-weight: 800;
-          letter-spacing: .05em;
-        }
-        .submit:hover:not(:disabled) {
-          background: #e1261c;
-          border-color: #e1261c;
-          color: #fff;
-        }
+        label { color: #8c897f; font: 11px monospace; text-transform: uppercase; margin-top: 8px; }
+        input, textarea { width: 100%; border: 1px solid #2e2c28; background: #0b0b0a; color: #f7f6f3; padding: 14px; outline: none; border-radius: 0; font: inherit; resize: vertical; }
+        input:focus, textarea:focus { border-color: #e1261c; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .two-col > div { min-width: 0; display: grid; gap: 10px; }
+        .submit { margin-top: 12px; border: 1px solid #f7f6f3; background: #f7f6f3; color: #0b0b0a; padding: 14px 18px; font-weight: 800; letter-spacing: .05em; cursor: pointer; }
+        .submit:hover:not(:disabled) { background: #e1261c; border-color: #e1261c; color: #fff; }
         .submit:disabled { opacity: .55; cursor: wait; }
         .feedback { margin: 8px 0 0; font-size: 13px; line-height: 1.5; }
         .error { color: #ff716a; }
         .success { color: #b8d9b8; }
-        .switch {
-          margin-top: 24px;
-          color: #8c897f;
-          text-align: center;
-          font-size: 13px;
-        }
-        .switch button {
-          border: 0;
-          padding: 0;
-          background: none;
-          color: #f7f6f3;
-          text-decoration: underline;
-          cursor: pointer;
-        }
-        .security {
-          margin: 34px 0 0;
-          color: #55534e;
-          font: 9px monospace;
-          letter-spacing: .04em;
-          text-align: center;
-        }
+        .switch { margin-top: 24px; color: #8c897f; text-align: center; font-size: 13px; }
+        .switch button { border: 0; padding: 0; background: none; color: #f7f6f3; text-decoration: underline; cursor: pointer; }
+        .security { margin: 34px 0 0; color: #55534e; font: 9px monospace; letter-spacing: .04em; text-align: center; }
+        @media (max-width: 520px) { .two-col { grid-template-columns: 1fr; } .auth-shell { padding: 12px; } .auth-card { max-height: calc(100vh - 24px); } }
       `}</style>
     </main>
   );
