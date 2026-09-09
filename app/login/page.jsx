@@ -21,9 +21,19 @@ export default function LoginPage() {
   useEffect(() => {
     if (mode === 'reset') return undefined;
     let active = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (active && data.user) window.location.replace('/');
+
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!active || !data.user) return;
+
+      if (data.user.email_confirmed_at) {
+        window.location.replace('/');
+        return;
+      }
+
+      // Never keep an unverified session around as an authenticated session.
+      await supabase.auth.signOut();
     });
+
     return () => { active = false; };
   }, [mode, supabase]);
 
@@ -79,9 +89,14 @@ export default function LoginPage() {
         return;
       }
 
+      // If Supabase returns a session immediately, only allow access when
+      // the email is already confirmed. Otherwise sign out and require email verification.
       if (data.session) {
-        window.location.replace(getNextPath());
-        return;
+        if (data.user?.email_confirmed_at) {
+          window.location.replace(getNextPath());
+          return;
+        }
+        await supabase.auth.signOut();
       }
 
       setMessage('Akun berhasil dibuat. Cek email untuk konfirmasi sebelum login.');
@@ -89,10 +104,17 @@ export default function LoginPage() {
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (signInError) {
       setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (!data.user?.email_confirmed_at) {
+      await supabase.auth.signOut();
+      setError('Email belum diverifikasi. Silakan cek email Anda dan lakukan konfirmasi terlebih dahulu.');
       setLoading(false);
       return;
     }
@@ -113,10 +135,10 @@ export default function LoginPage() {
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        <a className="brand" href="/" aria-label="Oxygen Gear Equipment">
+        <div className="brand" aria-label="Oxygen Gear Equipment">
           <span className="brand-mark" />
           OXYGEN GEAR
-        </a>
+        </div>
 
         <p className="eyebrow">MEMBER ACCESS / 01</p>
         <h1>{isReset ? 'RESET.' : mode === 'login' ? 'MASUK.' : 'BUAT AKUN.'}</h1>
@@ -193,7 +215,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="security">AUTHENTICATED BY SUPABASE · SECURE SESSION</p>
+        <p className="security">AUTHENTICATED BY SUPABASE · EMAIL VERIFICATION REQUIRED</p>
       </section>
 
       <style jsx>{`
@@ -204,7 +226,7 @@ export default function LoginPage() {
         .auth-shell::before { transform: translate(-30%, 35%); }
         .auth-shell::after { transform: translate(35%, -35%); }
         .auth-card { position: relative; z-index: 2; width: min(520px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border: 1px solid #2e2c28; background: rgba(14, 14, 13, .96); padding: clamp(26px, 6vw, 48px); box-shadow: 0 30px 90px rgba(0, 0, 0, .45); }
-        .brand { display: inline-flex; align-items: center; gap: 10px; color: #f7f6f3; text-decoration: none; font-weight: 800; letter-spacing: .05em; font-size: 15px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: #f7f6f3; font-weight: 800; letter-spacing: .05em; font-size: 15px; }
         .brand-mark { width: 13px; height: 13px; background: #e1261c; display: inline-block; }
         .eyebrow { margin: 48px 0 12px; color: #8c897f; font: 11px monospace; letter-spacing: .08em; }
         h1 { margin: 0; font-size: clamp(52px, 12vw, 76px); line-height: .9; letter-spacing: -.04em; }
