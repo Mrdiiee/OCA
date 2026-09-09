@@ -1,6 +1,7 @@
 import Script from "next/script";
 import AccountMenu from "./account-menu";
 import EventMenu from "./event-menu";
+import MemberMenu from "./member-menu";
 
 export const metadata = {
   title: "Oxygen Gear Equipment",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }) {
         {children}
         <AccountMenu />
         <EventMenu />
+        <MemberMenu />
         <Script
           src="https://app.sandbox.midtrans.com/snap/snap.js"
           data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
