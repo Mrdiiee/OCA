@@ -6,20 +6,45 @@ import { createClient } from '../../lib/supabase-browser';
 export default function InformasiUserPage() {
   const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getUser().then(({ data }) => {
+
+    async function loadUserData() {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUser = authData?.user;
+
       if (!active) return;
-      if (!data.user) {
+
+      if (!currentUser) {
         window.location.replace('/login?next=/informasi-user');
         return;
       }
-      setUser(data.user);
+
+      setUser(currentUser);
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, phone, address, city, postal_code, created_at, updated_at')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (profileError) {
+        console.error('Gagal memuat profil:', profileError);
+        setMessage('Data profil belum dapat dimuat. Silakan coba lagi.');
+      } else {
+        setProfile(profileData);
+      }
+
       setLoading(false);
-    });
+    }
+
+    loadUserData();
     return () => { active = false; };
   }, [supabase]);
 
@@ -32,12 +57,11 @@ export default function InformasiUserPage() {
     return <main className="page"><p>Memuat informasi user...</p></main>;
   }
 
-  const metadata = user?.user_metadata || {};
-  const fullName = metadata.full_name || metadata.name || '-';
-  const phone = metadata.phone || metadata.phone_number || '-';
-  const address = metadata.address || '-';
-  const city = metadata.city || '-';
-  const postalCode = metadata.postal_code || metadata.zip || '-';
+  const fullName = profile?.full_name || '-';
+  const phone = profile?.phone || '-';
+  const address = profile?.address || '-';
+  const city = profile?.city || '-';
+  const postalCode = profile?.postal_code || '-';
 
   return (
     <main className="page">
@@ -49,7 +73,7 @@ export default function InformasiUserPage() {
       <section className="content">
         <p className="eyebrow">MEMBER / USER INFORMATION</p>
         <h1>INFORMASI<br /><em>USER.</em></h1>
-        <p className="intro">Informasi akun dan data kontak yang tersimpan pada akun Oxygen Gear kamu.</p>
+        <p className="intro">Informasi akun dan data kontak yang tersimpan pada profil Oxygen Gear kamu.</p>
 
         <div className="grid">
           <section className="card">
@@ -67,13 +91,16 @@ export default function InformasiUserPage() {
             <div className="row"><span>Alamat</span><strong>{address}</strong></div>
             <div className="row"><span>Kota</span><strong>{city}</strong></div>
             <div className="row"><span>Kode pos</span><strong>{postalCode}</strong></div>
+            {profile?.updated_at && (
+              <div className="row"><span>Profil diperbarui</span><strong>{new Date(profile.updated_at).toLocaleString('id-ID')}</strong></div>
+            )}
           </section>
         </div>
 
         {message && <p className="message">{message}</p>}
 
         <div className="actions">
-          <button className="btn" onClick={() => setMessage('Data profil dapat dilengkapi melalui metadata akun Supabase.')}>Kelola informasi</button>
+          <button className="btn" onClick={() => setMessage('Fitur edit profil akan menggunakan tabel profiles yang sama.')}>Kelola informasi</button>
           <button className="btn danger" onClick={logout}>Keluar</button>
         </div>
       </section>
