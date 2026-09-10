@@ -8,6 +8,7 @@ export async function middleware(request) {
   const isAdminLoginPage = pathname === '/admin/login';
   const isLoginPage = pathname.startsWith('/login');
   const isMidtransWebhook = pathname === '/api/midtrans/notification';
+  const isPublicProductsApi = pathname === '/api/products';
   const isPublicStorefront =
     pathname === '/' ||
     pathname === '/produk' ||
@@ -28,6 +29,9 @@ export async function middleware(request) {
   // Midtrans server notifications are machine-to-machine requests and do not
   // carry a Supabase browser session. They must reach the webhook directly.
   if (isMidtransWebhook) return response;
+
+  // Product catalog data is public and is required by the public storefront.
+  if (isPublicProductsApi) return response;
 
   // The storefront is public. Customer account/order pages and admin pages
   // remain protected below.
