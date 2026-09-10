@@ -14,7 +14,7 @@ export async function GET(request) {
     const slug = searchParams.get("slug");
     let query = supabase
       .from("products")
-      .select("id,name,slug,description,price,stock,image_url,is_active,created_at")
+      .select("id,name,slug,description,price,stock,image_url,is_active,category,subcategory,created_at")
       .eq("is_active", true);
 
     if (slug) query = query.eq("slug", slug).limit(1);
@@ -31,8 +31,9 @@ export async function GET(request) {
       code: String(row.slug || row.id).slice(0, 10).toUpperCase(),
       name: row.name,
       slug: row.slug,
-      category: "Gear",
-      kind: "Outdoor",
+      category: row.category || "Lainnya",
+      subcategory: row.subcategory || "Outdoor",
+      kind: row.subcategory || "Outdoor",
       price: Number(row.price || 0),
       oldPrice: null,
       badge: Number(row.stock || 0) <= 0 ? "OUT OF STOCK" : "AVAILABLE",
