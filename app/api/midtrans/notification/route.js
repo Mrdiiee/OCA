@@ -30,10 +30,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "Signature tidak valid." }, { status: 401 });
     }
 
-    if (isSuccessfulPayment(body) && status_code !== "200") {
+    const successful = isSuccessfulPayment(body);
+    if (successful && status_code !== "200") {
       return NextResponse.json({ error: "Status pembayaran tidak valid." }, { status: 400 });
     }
-    if (isSuccessfulPayment(body) && transaction_status === "capture" && fraud_status !== "accept") {
+    if (successful && !transaction_id) {
+      return NextResponse.json({ error: "Transaction ID wajib ada untuk pembayaran berhasil." }, { status: 400 });
+    }
+    if (successful && transaction_status === "capture" && fraud_status !== "accept") {
       return NextResponse.json({ error: "Pembayaran kartu belum lolos verifikasi fraud." }, { status: 400 });
     }
 
@@ -53,9 +57,10 @@ export async function POST(request) {
     }
 
     let paidAt = null;
-    if (isSuccessfulPayment(body)) {
+    if (successful) {
       if (settlement_time) {
-        const parsed = new Date(String(settlement_time).replace(" ", "T") + "+07:00");
+        const raw = String(settlement_time);
+        const parsed = new Date(raw.includes("T") ? raw : raw.replace(" ", "T") + "+07:00");
         if (Number.isNaN(parsed.getTime())) return NextResponse.json({ error: "Waktu settlement tidak valid." }, { status: 400 });
         paidAt = parsed.toISOString();
       } else {
