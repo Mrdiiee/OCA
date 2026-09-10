@@ -73,6 +73,33 @@ button,input,textarea,select{font-family:Arial,Helvetica,sans-serif}
   .page .card> .kind,.page .card> .name,.page .card> .description,.page .card> .price,.page .card> .actions{margin-left:20px;margin-right:20px}
   .page .actions{margin-bottom:20px}
 }
+/* Product browsing polish: keep filters and cart available while browsing long catalogs. */
+.page .tools{position:sticky;top:0;z-index:12;margin:0 -2px 18px;padding:12px 2px;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-bottom:1px solid #e5e5e5}
+.page .cartButton{min-width:150px;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.08)}
+.page .filters{min-width:0}
+.page .filter{transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease}
+.page .filter:hover{border-color:#111!important;color:#111!important;transform:translateY(-1px)}
+.page .filter.active:hover{color:#fff!important;background:#e1261c!important;border-color:#e1261c!important}
+.page .subfilters{position:relative;gap:16px;margin-top:0;padding-top:12px}
+.page .subfilter{transition:color .16s ease,transform .16s ease}
+.page .subfilter:hover{color:#111!important;transform:translateY(-1px)}
+.page .subfilter.active{font-weight:700}
+.page .detail{margin:0 26px 26px;padding:12px 14px;font-size:10px;font-weight:700;letter-spacing:1.1px;transition:background .16s ease,color .16s ease,border-color .16s ease}
+.page .detail:hover{background:#111!important;border-color:#111!important;color:#fff!important}
+.page .drawer-head{padding-bottom:14px;border-bottom:1px solid #e5e5e5}
+.page .drawer h2,.page .modal h2{margin:0;letter-spacing:-.03em}
+.page .row strong{font-size:14px;line-height:1.35}
+.page .row .kind{margin-top:5px;text-transform:none;letter-spacing:0;font-size:12px}
+.page .checkout{min-height:48px;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.page .checkout:hover{transform:translateY(-1px)}
+@media(max-width:760px){
+  .page .tools{top:0;margin-left:-24px;margin-right:-24px;padding:10px 24px;display:flex;gap:12px}
+  .page .tools .filters{width:100%;overflow-x:auto;flex-wrap:nowrap}
+  .page .cartButton{width:100%;min-width:0}
+  .page .subfilters{overflow-x:auto;flex-wrap:nowrap;margin-left:-2px;margin-right:-2px;padding-bottom:16px}
+  .page .subfilter{white-space:nowrap}
+  .page .detail{margin-left:20px;margin-right:20px;margin-bottom:20px}
+}
 /* Desktop hover previews: the navigation remains clickable, while hovering/focusing reveals the related contents before click. */
 @media (hover:hover) and (min-width:981px){
   .shell .nav-links{align-self:stretch;align-items:center}
