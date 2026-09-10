@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../../../lib/supabase-server";
 
+export const dynamic = "force-dynamic";
+
 function getMidtransBaseUrl() {
   return process.env.MIDTRANS_IS_PRODUCTION === "true"
     ? "https://api.midtrans.com/v2"
