@@ -41,6 +41,38 @@ button,input,textarea,select{font-family:Arial,Helvetica,sans-serif}
 .shell .quick-add{background:#fff!important;color:#111!important;border-color:#d8d8d8!important}.shell .quick-add:hover{background:#111!important;color:#fff!important;border-color:#111!important}.shell .badge{background:#e1261c!important}.shell .image-meta{color:#fff!important}
 .page{padding-top:28px!important}.page .back{color:#111!important}.page .eyebrow{color:#e1261c!important}.page .title{color:#111!important}.page .filters{scrollbar-width:none}.page .filter{background:#fff!important;color:#555!important;border-color:#d9d9d9!important}.page .filter.active{background:#111!important;color:#fff!important;border-color:#111!important}.page .subfilters{border-color:#e5e5e5!important}.page .subfilter{color:#777!important}.page .subfilter.active{color:#111!important}.page .categoryBlock{border:0}.page .categoryTitle{color:#111!important}.page .categoryMeta,.page .kind{color:#6b6b6b!important}.page .card{background:#fff!important;border-color:#e5e5e5!important}.page .visual{background:#f5f5f3!important;border-color:#e5e5e5!important}.page .name{color:#111!important}.page .description{color:#6b6b6b!important}.page .price{color:#111!important}.page .btn,.page .cartButton,.page .checkout{background:#111!important;color:#fff!important;border-color:#111!important}.page .btn.secondary{background:#fff!important;color:#111!important;border-color:#111!important}.page .btn:hover:not(:disabled),.page .cartButton:hover,.page .checkout:hover{background:#e1261c!important;border-color:#e1261c!important;color:#fff!important}.page .detail{border-color:#e5e5e5!important;color:#111!important}.page .drawer,.page .modal{background:#fff!important;border-color:#e5e5e5!important;color:#111!important;box-shadow:0 20px 70px rgba(0,0,0,.14)!important}.page .overlay{background:rgba(0,0,0,.38)!important}.page .row{border-color:#e5e5e5!important}.page .qty button{border-color:#d9d9d9!important;color:#111!important}.page .close{color:#555!important}.page .field{color:#555!important}.page .field input,.page .field textarea{background:#fff!important;border-color:#d9d9d9!important;color:#111!important}.page .summary{border-color:#e5e5e5!important}.page .error{border-color:#efb7b3!important;color:#a51d16!important;background:#fff8f7!important}
 .account-logout{background:rgba(255,255,255,.96)!important;color:#111!important;border-color:#d9d9d9!important;box-shadow:0 6px 24px rgba(0,0,0,.08)!important}.account-logout:hover:not(:disabled){border-color:#e1261c!important;color:#e1261c!important}
+/* Product cards: clean technical ecommerce presentation. */
+.page .categoryBlock{margin:54px 0 78px}
+.page .categoryHead{margin-bottom:24px;padding-bottom:14px;border-bottom:1px solid #e5e5e5}
+.page .categoryTitle{font-size:clamp(28px,3vw,38px);font-weight:700;letter-spacing:-.035em}
+.page .categoryMeta{font-size:10px;letter-spacing:1.5px;font-weight:700}
+.page .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.page .card{position:relative;overflow:hidden;padding:0;border-radius:0;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.page .card:hover{transform:translateY(-4px);border-color:#cfcfcf!important;box-shadow:0 18px 45px rgba(0,0,0,.08)}
+.page .visual{height:clamp(340px,38vw,520px);border-bottom:0;position:relative;background:#f4f4f2!important}
+.page .visual:after{content:"";position:absolute;inset:auto 0 0;height:34%;background:linear-gradient(0deg,rgba(0,0,0,.13),transparent);pointer-events:none;opacity:.65;transition:opacity .22s ease}
+.page .card:hover .visual:after{opacity:.25}
+.page .visual img{transition:transform .5s cubic-bezier(.2,.7,.2,1),filter .3s ease}
+.page .card:hover .visual img{transform:scale(1.035);filter:saturate(.96)}
+.page .stock{left:16px;top:16px;padding:8px 10px;background:#e1261c;font-size:9px;letter-spacing:1.2px;z-index:2}
+.page .card> .kind,.page .card> .name,.page .card> .description,.page .card> .price,.page .card> .actions{margin-left:26px;margin-right:26px}
+.page .card>.kind:first-of-type{margin-top:22px}
+.page .kind{font-size:10px;letter-spacing:1.2px;text-transform:uppercase}
+.page .name{font-size:clamp(25px,2.5vw,36px);line-height:1.02;letter-spacing:-.035em;margin-top:9px;margin-bottom:10px}
+.page .description{font-size:13px;line-height:1.65;max-width:620px;min-height:43px;margin-top:0}
+.page .price{font-size:18px;letter-spacing:-.01em;margin-top:18px}
+.page .price + .kind{margin-top:7px}
+.page .actions{margin-top:22px;margin-bottom:26px;display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.page .btn{min-height:46px;padding:12px 14px;font-size:10px;letter-spacing:.9px;text-transform:uppercase;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.page .btn:hover:not(:disabled){transform:translateY(-1px)}
+.page .btn.secondary{background:#fff!important}
+.page .empty-filter{border:1px dashed #d9d9d9;background:#fafaf9}
+@media(max-width:760px){
+  .page .grid{grid-template-columns:1fr;gap:18px}
+  .page .visual{height:min(115vw,500px)}
+  .page .card> .kind,.page .card> .name,.page .card> .description,.page .card> .price,.page .card> .actions{margin-left:20px;margin-right:20px}
+  .page .actions{margin-bottom:20px}
+}
 /* Desktop hover previews: the navigation remains clickable, while hovering/focusing reveals the related contents before click. */
 @media (hover:hover) and (min-width:981px){
   .shell .nav-links{align-self:stretch;align-items:center}
