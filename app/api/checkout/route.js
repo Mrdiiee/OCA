@@ -52,6 +52,7 @@ export async function POST(request) {
     if (!serverKey) return NextResponse.json({ error: 'MIDTRANS_SERVER_KEY belum diatur di environment variable.' }, { status: 500 });
 
     let order = existing;
+    let orderWasCreated = false;
     if (!order) {
       const orderId = `OXY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const { data: created, error: oe } = await admin.from('orders').insert({ user_id: user.id, order_number: orderId, status: 'pending_payment', total_amount: total, checkout_idempotency_key: checkoutKey }).select('id,order_number,midtrans_snap_token,status,total_amount').single();
@@ -60,7 +61,10 @@ export async function POST(request) {
         if (race?.midtrans_snap_token) return NextResponse.json({ token: race.midtrans_snap_token, orderId: race.order_number, reused: true });
         if (!race) return NextResponse.json({ error: 'Pesanan gagal disiapkan. Silakan coba lagi.' }, { status: 500 });
         order = race;
-      } else order = created;
+      } else {
+        order = created;
+        orderWasCreated = true;
+      }
     }
     if (Number(order.total_amount) !== total) return NextResponse.json({ error: 'Checkout ini sudah dipakai untuk pesanan dengan total berbeda.' }, { status: 409 });
 
@@ -71,12 +75,21 @@ export async function POST(request) {
       if (!sameItems) return NextResponse.json({ error: 'Checkout ini sudah dipakai untuk keranjang yang berbeda.' }, { status: 409 });
     } else {
       const { error: ie } = await admin.from('order_items').insert(verified.map(i => ({ order_id: order.id, product_id: i.product_id, product_name: i.product_name, quantity: i.quantity, unit_price: i.unit_price })));
-      if (ie) { console.error('Gagal menyimpan detail order:', ie); return NextResponse.json({ error: 'Detail pesanan belum dapat disimpan. Silakan coba lagi.' }, { status: 500 }); }
+      if (ie) {
+        const { data: concurrentItems } = await admin.from('order_items').select('product_id,quantity,unit_price').eq('order_id', order.id);
+        const sameItems = concurrentItems?.length === verified.length && verified.every(v => concurrentItems.some(s => s.product_id === v.product_id && Number(s.quantity) === v.quantity && Number(s.unit_price) === v.unit_price));
+        if (!sameItems) {
+          console.error('Gagal menyimpan detail order:', ie);
+          return NextResponse.json({ error: 'Detail pesanan belum dapat disimpan. Silakan coba lagi.' }, { status: 500 });
+        }
+      }
     }
 
     await admin.from('profiles').upsert({ id: user.id, full_name: String(name).trim(), phone: String(phone).trim(), address: String(address).trim(), updated_at: new Date().toISOString() }, { onConflict: 'id' });
-    const { error: eventError } = await admin.from('order_tracking_events').insert({ order_id: order.id, status: 'pending_payment', description: 'Pesanan dibuat dan menunggu pembayaran.' });
-    if (eventError) console.error(eventError);
+    if (orderWasCreated) {
+      const { error: eventError } = await admin.from('order_tracking_events').insert({ order_id: order.id, status: 'pending_payment', description: 'Pesanan dibuat dan menunggu pembayaran.' });
+      if (eventError) console.error(eventError);
+    }
 
     const authHeader = 'Basic ' + Buffer.from(`${serverKey}:`).toString('base64');
     const midtransRes = await fetch(getMidtransSnapUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: authHeader, 'Idempotency-Key': checkoutKey }, body: JSON.stringify({ transaction_details: { order_id: order.order_number, gross_amount: total }, customer_details: { first_name: String(name).trim(), phone: String(phone).trim(), billing_address: { address: String(address).trim() } }, item_details: verified.map(i => ({ id: i.product_id, price: i.unit_price, quantity: i.quantity, name: i.product_name })) }) });
@@ -85,7 +98,7 @@ export async function POST(request) {
     if (!midtrans.token) return NextResponse.json({ error: 'Midtrans tidak mengembalikan token pembayaran. Silakan coba lagi.' }, { status: 502 });
 
     const { error: updateError } = await admin.from('orders').update({ midtrans_snap_token: midtrans.token }).eq('id', order.id).is('midtrans_snap_token', null);
-    if (updateError) { console.error('Gagal menyimpan Snap token:', updateError); return NextResponse.json({ error: 'Transaksi pembayaran dibuat, tetapi token belum tersimpan. Silakan coba lagi dengan tombol pembayaran yang sama.' }, { status: 500 }); }
+    if (updateError) { console.error('Gagal menyimpan Snap token:', updateError); return NextResponse.json({ error: 'Transaksi pembayaran dibuat, tetapi token belum tersimpan. Silakan coba lagi dengan tombol pembayaran yang sama.' }, { status: 500); }
     return NextResponse.json({ token: midtrans.token, orderId: order.order_number });
   } catch (err) {
     console.error('Checkout error:', err);
