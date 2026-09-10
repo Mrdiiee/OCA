@@ -9,6 +9,17 @@ export async function middleware(request) {
   const isLoginPage = pathname.startsWith('/login');
   const isPublicAuthPage = isLoginPage || isAdminLoginPage;
 
+  // Prevent the login page from accepting protocol-relative or external
+  // redirect targets through the `next` query parameter.
+  if (isLoginPage && request.nextUrl.searchParams.has('next')) {
+    const next = request.nextUrl.searchParams.get('next') || '';
+    if (!next.startsWith('/') || next.startsWith('//') || next.includes('\\')) {
+      const url = request.nextUrl.clone();
+      url.searchParams.set('next', '/');
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Support both the legacy Supabase anon-key names and the newer
   // Vercel/Supabase integration variable names.
   const supabaseUrl =
