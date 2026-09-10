@@ -41,21 +41,11 @@ export default function AccountMenu() {
           </div>
           <div className="product-hover-columns">
             <div className="product-hover-group">
-              <span className="product-hover-label">BAGS &amp; CARRIER</span>
-              <a href="/produk?category=Bags&amp;subcategory=Carrier">Carrier</a>
-              <a href="/produk?category=Bags&amp;subcategory=Carrier">Keygen V1</a>
-              <a href="/produk?category=Bags&amp;subcategory=Carrier">Keygen V2</a>
-            </div>
-            <div className="product-hover-group">
-              <span className="product-hover-label">PAKAIAN</span>
-              <a href="/produk?category=Pakaian&amp;subcategory=Vest">Running Vest</a>
-              <a href="/produk?category=Pakaian&amp;subcategory=Vest">Semua pakaian</a>
-            </div>
-            <div className="product-hover-group">
-              <span className="product-hover-label">OUTDOOR</span>
-              <a href="/produk">Semua equipment</a>
-              <a href="/produk">Produk terbaru</a>
-              <a href="/produk">Best seller</a>
+              <span className="product-hover-label">KATEGORI</span>
+              <a href="/produk?category=Bags">Bags</a>
+              <a href="/produk?category=Pakaian">Pakaian</a>
+              <a href="/produk?category=Outdoor">Outdoor</a>
+              <a href="/produk?category=Aksesori">Aksesori</a>
             </div>
           </div>
         </div>
@@ -135,7 +125,7 @@ export default function AccountMenu() {
         .product-hover-heading a:hover { color:#e1261c; }
         .product-hover-columns {
           display:grid;
-          grid-template-columns:repeat(3,1fr);
+          grid-template-columns:repeat(4,minmax(120px,1fr));
           gap:24px;
           padding-top:24px;
         }
