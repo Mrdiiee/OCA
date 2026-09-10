@@ -1,0 +1,43 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return NextResponse.json({ error: "Konfigurasi database belum lengkap." }, { status: 500 });
+
+    const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+    const { data, error } = await supabase
+      .from("products")
+      .select("id,name,slug,description,price,stock,image_url,is_active")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Gagal mengambil produk:", error);
+      return NextResponse.json({ error: "Produk gagal dimuat." }, { status: 500 });
+    }
+
+    const products = (data || []).map((row) => ({
+      id: row.id,
+      code: String(row.slug || row.id).slice(0, 10).toUpperCase(),
+      name: row.name,
+      category: "Gear",
+      kind: "Outdoor",
+      price: Number(row.price || 0),
+      oldPrice: null,
+      badge: Number(row.stock || 0) <= 0 ? "OUT OF STOCK" : "AVAILABLE",
+      image: row.image_url || "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1200&q=85",
+      blurb: row.description || "Perlengkapan outdoor pilihan Oxygen Gear.",
+      stock: Number(row.stock || 0),
+    }));
+
+    return NextResponse.json({ products });
+  } catch (error) {
+    console.error("Products API error:", error);
+    return NextResponse.json({ error: "Terjadi kesalahan saat memuat produk." }, { status: 500 });
+  }
+}
