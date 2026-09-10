@@ -1,0 +1,118 @@
+name: Connect storefront to Supabase products
+
+on:
+  push:
+    paths:
+      - .github/workflows/connect-store-products.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-storefront:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Connect storefront product catalog
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('app/page.jsx')
+          text = path.read_text()
+
+          text = text.replace(
+              'import { useMemo, useState } from "react";\n',
+              'import { useEffect, useMemo, useState } from "react";\nimport { createClient } from "../lib/supabase-browser";\n'
+          )
+
+          old_card = re.search(r'function ProductCard\(\{ item, onAdd, onBuy \}\) \{.*?\n\}\n\nexport default function OxygenGearSite', text, re.S)
+          if not old_card:
+              raise SystemExit('ProductCard block not found')
+
+          new_card = '''function ProductCard({ item, onAdd, onBuy }) {
+            const outOfStock = Number(item.stock) <= 0;
+            return <article className="product-card"><div className="product-image"><img src={item.image} alt={item.name}/><span className="badge">{item.badge}</span><button className="quick-add" type="button" onClick={() => onAdd(item)} disabled={outOfStock} aria-label={outOfStock ? `${item.name} habis` : `Tambah ${item.name}`}> <Icon name="plus" size={18}/></button><div className="image-meta"><span>{item.category}</span><span>{item.kind}</span></div></div><div className="product-info"><div className="product-code">{item.code}</div><h3>{item.name}</h3><p>{item.blurb}</p><div className="price-row"><div><strong>{fmt(item.price)}</strong>{item.oldPrice ? <del>{fmt(item.oldPrice)}</del> : null}<small className="stock-note">{outOfStock ? "Stok habis" : `Stok ${item.stock}`}</small></div><button className="text-btn" type="button" onClick={() => onBuy(item)} disabled={outOfStock}>{outOfStock ? "Stok habis" : "Beli sekarang"} {!outOfStock && <Icon name="arrow" size={16}/>}</button></div></div></article>;
+          }
+
+          export default function OxygenGearSite'''
+          text = text[:old_card.start()] + new_card + text[old_card.end():]
+
+          needle = 'export default function OxygenGearSite() {\n  const [cart, setCart] = useState([]); const [cartOpen, setCartOpen] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const [searchOpen, setSearchOpen] = useState(false); const [search, setSearch] = useState(""); const [checkoutError, setCheckoutError] = useState("");\n'
+          replacement = '''export default function OxygenGearSite() {
+            const [cart, setCart] = useState([]); const [cartOpen, setCartOpen] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const [searchOpen, setSearchOpen] = useState(false); const [search, setSearch] = useState(""); const [checkoutError, setCheckoutError] = useState("");
+            const [products, setProducts] = useState(PRODUCTS);
+            const [productsLoading, setProductsLoading] = useState(true);
+
+            useEffect(() => {
+              let active = true;
+              const supabase = createClient();
+              async function loadProducts() {
+                const { data, error } = await supabase.from("products").select("id,name,slug,description,price,stock,image_url,is_active").eq("is_active", true).order("created_at", { ascending: false });
+                if (!active) return;
+                if (!error && Array.isArray(data)) {
+                  setProducts(data.map((row) => {
+                    const fallback = PRODUCTS.find((item) => item.id === row.slug || item.id === row.id);
+                    const stock = Number(row.stock ?? 0);
+                    return {
+                      ...(fallback || {}),
+                      id: row.id,
+                      code: fallback?.code || String(row.slug || row.id).slice(0, 10).toUpperCase(),
+                      name: row.name,
+                      category: fallback?.category || "Gear",
+                      kind: fallback?.kind || "Outdoor",
+                      price: Number(row.price || 0),
+                      oldPrice: fallback?.oldPrice,
+                      badge: stock <= 0 ? "OUT OF STOCK" : (fallback?.badge || "AVAILABLE"),
+                      image: row.image_url || fallback?.image || "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1200&q=85",
+                      blurb: row.description || fallback?.blurb || "Perlengkapan outdoor pilihan Oxygen Gear.",
+                      stock,
+                    };
+                  }));
+                }
+                setProductsLoading(false);
+              }
+              loadProducts();
+              return () => { active = false; };
+            }, []);
+'''
+          if needle not in text:
+              raise SystemExit('component state block not found')
+          text = text.replace(needle, replacement, 1)
+
+          text = text.replace(
+              'const visibleProducts = PRODUCTS.filter((item) => `${item.name} ${item.category} ${item.kind}`.toLowerCase().includes(search.trim().toLowerCase()));',
+              'const visibleProducts = products.filter((item) => `${item.name} ${item.category} ${item.kind}`.toLowerCase().includes(search.trim().toLowerCase()));'
+          )
+
+          text = text.replace(
+              'function add(item) { setCart((current) => { const found = current.find((x) => x.id === item.id); return found ? current.map((x) => x.id === item.id ? { ...x, qty: x.qty + 1 } : x) : [...current, { ...item, qty: 1 }]; }); setCartOpen(true); setCheckoutError(""); }',
+              'function add(item) { if (Number(item.stock) <= 0) return; setCart((current) => { const found = current.find((x) => x.id === item.id); if (found && found.qty >= Number(item.stock)) return current; return found ? current.map((x) => x.id === item.id ? { ...x, qty: Math.min(x.qty + 1, Number(item.stock)) } : x) : [...current, { ...item, qty: 1 }]; }); setCartOpen(true); setCheckoutError(""); }'
+          )
+          text = text.replace(
+              'function changeQty(id, delta) { setCart((current) => current.map((x) => x.id === id ? { ...x, qty: x.qty + delta } : x).filter((x) => x.qty > 0)); }',
+              'function changeQty(id, delta) { setCart((current) => current.map((x) => x.id === id ? { ...x, qty: Math.min(Math.max(x.qty + delta, 0), Number(x.stock ?? 999999)) } : x).filter((x) => x.qty > 0)); }'
+          )
+
+          if 'productsLoading' in text and 'loading-products' not in text:
+              text = text.replace(
+                  '<div className="product-grid">{visibleProducts.map((item) => <ProductCard key={item.id} item={item} onAdd={add} onBuy={buyNow}/>)}',
+                  '<div className="product-grid">{productsLoading ? <div className="section-copy">Memuat produk...</div> : visibleProducts.map((item) => <ProductCard key={item.id} item={item} onAdd={add} onBuy={buyNow}/>)}'
+              )
+
+          if 'stock-note' not in text:
+              pass
+          text = text.replace('.text-btn:hover{color:var(--red)}', '.text-btn:hover{color:var(--red)}.text-btn:disabled{color:#69655e;cursor:not-allowed}.quick-add:disabled{opacity:.45;cursor:not-allowed}.stock-note{display:block;color:var(--muted);font-size:10px;margin-top:5px}')
+
+          path.write_text(text)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.jsx
+          git diff --cached --quiet && echo "No storefront changes needed" || git commit -m "Connect storefront to Supabase products"
+          git push
+          rm -f .github/workflows/connect-store-products.yml
+          git add .github/workflows/connect-store-products.yml
+          git commit -m "Remove one-time storefront migration workflow" || true
+          git push || true
