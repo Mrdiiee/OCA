@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
-const emptyForm = { name: '', slug: '', description: '', price: '', stock: '', imageUrl: '', isActive: true };
+const CATEGORY_OPTIONS = {
+  Bags: ['Carrier', 'Backpack', 'Shoulder Bag', 'Tas Pinggang', 'Duffle', 'Pouch', 'Koper', 'Tas Outdoor', 'Lainnya'],
+  Pakaian: ['Kaos', 'Jaket', 'Celana', 'Kemeja', 'Hoodie', 'Vest', 'Shorts', 'Base Layer', 'Lainnya'],
+  Sepatu: ['Trail', 'Hiking', 'Running', 'Casual', 'Sandal', 'Lainnya'],
+  Equipment: ['Camping', 'Hiking', 'Climbing', 'Travel', 'Survival', 'Lainnya'],
+  Aksesori: ['Topi', 'Kupluk', 'Sarung Tangan', 'Kaos Kaki', 'Aksesori Outdoor', 'Lainnya'],
+  Lainnya: ['Outdoor'],
+};
+const emptyForm = { name: '', slug: '', description: '', price: '', stock: '', imageUrl: '', category: 'Bags', subcategory: 'Carrier', isActive: true };
 const money = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 
 function slugify(value) {
@@ -15,6 +23,7 @@ export default function AdminProdukPage() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('Semua');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingId, setSavingId] = useState('');
@@ -38,11 +47,16 @@ export default function AdminProdukPage() {
   function resetForm() { setForm(emptyForm); setEditingId(null); }
 
   function startEdit(product) {
+    const category = product.category || 'Lainnya';
     setEditingId(product.id);
-    setForm({ name: product.name || '', slug: product.slug || '', description: product.description || '', price: product.price ?? '', stock: product.stock ?? '', imageUrl: product.image_url || '', isActive: product.is_active });
+    setForm({ name: product.name || '', slug: product.slug || '', description: product.description || '', price: product.price ?? '', stock: product.stock ?? '', imageUrl: product.image_url || '', category, subcategory: product.subcategory || CATEGORY_OPTIONS[category]?.[0] || 'Outdoor', isActive: product.is_active });
     setMessage('Mode edit aktif.');
     setError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function changeCategory(category) {
+    setForm((current) => ({ ...current, category, subcategory: CATEGORY_OPTIONS[category]?.[0] || 'Lainnya' }));
   }
 
   async function saveProduct(event) {
@@ -77,15 +91,19 @@ export default function AdminProdukPage() {
     finally { setSavingId(''); }
   }
 
-  const filtered = useMemo(() => products.filter((p) => `${p.name} ${p.slug}`.toLowerCase().includes(query.toLowerCase())), [products, query]);
+  const filtered = useMemo(() => products.filter((p) => {
+    const textMatch = `${p.name} ${p.slug} ${p.category || ''} ${p.subcategory || ''}`.toLowerCase().includes(query.toLowerCase());
+    return textMatch && (categoryFilter === 'Semua' || p.category === categoryFilter);
+  }), [products, query, categoryFilter]);
   const activeCount = products.filter((p) => p.is_active).length;
   const lowStock = products.filter((p) => p.stock > 0 && p.stock <= 5).length;
   const outOfStock = products.filter((p) => p.stock === 0).length;
+  const formSubcategories = CATEGORY_OPTIONS[form.category] || ['Lainnya'];
 
   return (
     <main style={styles.page}><div style={styles.shell}>
       <header style={styles.header}>
-        <div><div style={styles.kicker}>OXYGEN GEAR / ADMIN</div><h1 style={styles.title}>PRODUK.</h1><p style={styles.sub}>Kelola katalog, harga, stok, dan status produk yang tersedia di toko.</p></div>
+        <div><div style={styles.kicker}>OXYGEN GEAR / ADMIN</div><h1 style={styles.title}>PRODUK.</h1><p style={styles.sub}>Kelola katalog, kategori, subkategori, harga, stok, dan status produk.</p></div>
         <nav style={styles.nav}><Link href="/admin" style={styles.link}>ADMIN</Link><Link href="/admin/pengiriman" style={styles.link}>PENGIRIMAN</Link><Link href="/" style={styles.link}>TOKO</Link></nav>
       </header>
 
@@ -95,6 +113,8 @@ export default function AdminProdukPage() {
         <form onSubmit={saveProduct} style={styles.form}>
           <label style={styles.label}>NAMA PRODUK<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value, slug: editingId ? form.slug : slugify(e.target.value) })} placeholder="Contoh: Keygen V1" style={styles.input} /></label>
           <label style={styles.label}>SLUG<input required value={form.slug} onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })} placeholder="keygen-v1" style={styles.input} /></label>
+          <label style={styles.label}>KATEGORI<select value={form.category} onChange={(e) => changeCategory(e.target.value)} style={styles.input}>{Object.keys(CATEGORY_OPTIONS).map((category) => <option key={category}>{category}</option>)}</select></label>
+          <label style={styles.label}>SUBKATEGORI<select value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })} style={styles.input}>{formSubcategories.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label style={styles.label}>HARGA (RUPIAH)<input required type="number" min="0" step="1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="550000" style={styles.input} /></label>
           <label style={styles.label}>STOK<input required type="number" min="0" step="1" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} placeholder="20" style={styles.input} /></label>
           <label style={styles.label}>URL GAMBAR <span style={styles.hint}>opsional</span><input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." style={styles.input} /></label>
@@ -105,12 +125,12 @@ export default function AdminProdukPage() {
         {message && <div style={styles.message}>{message}</div>}{error && <div style={styles.error}>{error}</div>}
       </section>
 
-      <section style={styles.card}><div style={styles.sectionHead}><div><div style={styles.sectionTitle}>INVENTARIS PRODUK</div><p style={styles.hint}>Produk dengan stok 0 tetap tersimpan, tetapi checkout tidak dapat membelinya.</p></div><div style={styles.tools}><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari produk" style={styles.search}/><button onClick={loadProducts} style={styles.refresh}>REFRESH</button></div></div>
+      <section style={styles.card}><div style={styles.sectionHead}><div><div style={styles.sectionTitle}>INVENTARIS PRODUK</div><p style={styles.hint}>Kategori dipakai untuk menyusun storefront; subkategori menjadi filter kedua.</p></div><div style={styles.tools}><select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={styles.search}><option>Semua</option>{Object.keys(CATEGORY_OPTIONS).map((category) => <option key={category}>{category}</option>)}</select><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari produk" style={styles.search}/><button onClick={loadProducts} style={styles.refresh}>REFRESH</button></div></div>
         {loading ? <p style={styles.muted}>Memuat produk...</p> : filtered.length === 0 ? <p style={styles.muted}>Produk tidak ditemukan.</p> : <div style={styles.list}>{filtered.map((product) => {
           const stockStyle = product.stock === 0 ? styles.out : product.stock <= 5 ? styles.low : styles.ok;
           return <article key={product.id} style={styles.row}>
             <div style={styles.productVisual}>{product.image_url ? <img src={product.image_url} alt="" style={styles.image} /> : <div style={styles.noImage}>NO IMAGE</div>}</div>
-            <div style={styles.details}><strong>{product.name}</strong><span>{product.slug}</span><span>{money.format(Number(product.price || 0))}</span></div>
+            <div style={styles.details}><strong>{product.name}</strong><span>{product.category} / {product.subcategory}</span><span>{product.slug}</span><span>{money.format(Number(product.price || 0))}</span></div>
             <div style={styles.stock}><span style={{ ...styles.stockBadge, ...stockStyle }}>{product.stock === 0 ? 'HABIS' : `${product.stock} UNIT`}</span><small>{product.is_active ? 'AKTIF' : 'NONAKTIF'}</small></div>
             <div style={styles.actions}><button onClick={() => startEdit(product)} style={styles.smallButton}>EDIT</button><button disabled={savingId === product.id} onClick={() => toggleActive(product)} style={styles.smallButton}>{savingId === product.id ? '...' : product.is_active ? 'NONAKTIFKAN' : 'AKTIFKAN'}</button></div>
           </article>;
@@ -121,5 +141,6 @@ export default function AdminProdukPage() {
 }
 
 const styles = {
-  page:{minHeight:'100vh',background:'#0b0b0b',color:'#f4f4f4',padding:'42px 20px',fontFamily:'Arial, sans-serif'}, shell:{maxWidth:1100,margin:'0 auto'}, header:{display:'flex',justifyContent:'space-between',gap:24,alignItems:'flex-end',marginBottom:28,borderBottom:'1px solid #292929',paddingBottom:22}, kicker:{fontSize:11,letterSpacing:2.5,color:'#a3a3a3',marginBottom:8}, title:{margin:0,fontSize:42,letterSpacing:1}, sub:{margin:'8px 0 0',color:'#9d9d9d'}, nav:{display:'flex',gap:16,flexWrap:'wrap',justifyContent:'flex-end'}, link:{color:'#fff',fontSize:11,letterSpacing:1.2,textDecoration:'none'}, stats:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}, stat:{background:'#111',border:'1px solid #292929',padding:18}, statSpan:{fontSize:9}, stat:{background:'#111',border:'1px solid #292929',padding:18,display:'grid',gap:7}, card:{background:'#111',border:'1px solid #292929',padding:24,marginBottom:18}, sectionTitle:{fontSize:12,letterSpacing:2,fontWeight:700,marginBottom:18}, form:{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:16}, label:{display:'grid',gap:7,fontSize:10,letterSpacing:1.4,color:'#bdbdbd'}, hint:{fontSize:11,letterSpacing:0,color:'#777'}, input:{width:'100%',boxSizing:'border-box',background:'#0b0b0b',border:'1px solid #333',color:'#fff',padding:'13px 12px',fontSize:14,outline:'none'}, check:{gridColumn:'1 / -1',display:'flex',alignItems:'center',gap:9,fontSize:10,letterSpacing:1.2,color:'#bbb'}, formActions:{gridColumn:'1 / -1',display:'flex',gap:10}, button:{border:0,background:'#fff',color:'#000',padding:'14px 18px',fontWeight:700,letterSpacing:1,cursor:'pointer'}, secondary:{background:'transparent',border:'1px solid #555',color:'#fff',padding:'13px 18px',cursor:'pointer',letterSpacing:1}, message:{marginTop:14,color:'#b8ffb8',fontSize:13}, error:{marginTop:14,color:'#ff8e8e',fontSize:13}, sectionHead:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:18,marginBottom:18}, tools:{display:'flex',gap:8,alignItems:'center'}, search:{width:220,maxWidth:'100%',background:'#0b0b0b',border:'1px solid #333',color:'#fff',padding:'10px 11px',outline:'none'}, refresh:{background:'transparent',border:'1px solid #444',color:'#fff',padding:'10px 11px',cursor:'pointer',fontSize:10,letterSpacing:1}, muted:{color:'#777'}, list:{display:'grid'}, row:{display:'grid',gridTemplateColumns:'76px 1.5fr 120px auto',gap:16,alignItems:'center',borderTop:'1px solid #252525',padding:'15px 0'}, productVisual:{width:76,height:76,background:'#171717',border:'1px solid #292929',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}, image:{width:'100%',height:'100%',objectFit:'cover'}, noImage:{fontSize:8,letterSpacing:1,color:'#666'}, details:{display:'grid',gap:5,fontSize:12}, detailsStrong:{color:'#fff'}, detailsSpan:{color:'#777'}, stock:{display:'grid',gap:6,justifyItems:'start'}, stockBadge:{padding:'6px 8px',fontSize:9,letterSpacing:1,fontWeight:700}, ok:{background:'#18351e',color:'#9cffaa'}, low:{background:'#493c18',color:'#ffe58a'}, out:{background:'#3b2119',color:'#ff9d88'}, actions:{display:'flex',gap:7,flexWrap:'wrap',justifyContent:'flex-end'}, smallButton:{background:'transparent',border:'1px solid #444',color:'#ddd',padding:'7px 9px',fontSize:9,letterSpacing:1,cursor:'pointer'},
+  page:{minHeight:'100vh',background:'#0b0b0b',color:'#f4f4f4',padding:'42px 20px',fontFamily:'Arial, sans-serif'}, shell:{maxWidth:1100,margin:'0 auto'}, header:{display:'flex',justifyContent:'space-between',gap:24,alignItems:'flex-end',marginBottom:28,borderBottom:'1px solid #292929',paddingBottom:22}, kicker:{fontSize:11,letterSpacing:2.5,color:'#a3a3a3',marginBottom:8}, title:{margin:0,fontSize:42,letterSpacing:1}, sub:{margin:'8px 0 0',color:'#9d9d9d'}, nav:{display:'flex',gap:16,flexWrap:'wrap',justifyContent:'flex-end'}, link:{color:'#fff',fontSize:11,letterSpacing:1.2,textDecoration:'none'}, stats:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}, stat:{background:'#111',border:'1px solid #292929',padding:18,display:'grid',gap:7}, card:{background:'#111',border:'1px solid #292929',padding:24,marginBottom:18}, sectionTitle:{fontSize:12,letterSpacing:2,fontWeight:700,marginBottom:18}, form:{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:16}, label:{display:'grid',gap:7,fontSize:10,letterSpacing:1.4,color:'#bdbdbd'}, hint:{fontSize:11,letterSpacing:0,color:'#777'}, input:{width:'100%',boxSizing:'border-box',background:'#0b0b0b',border:'1px solid #333',color:'#fff',padding:'13px 12px',fontSize:14,outline:'none'}, check:{gridColumn:'1 / -1',display:'flex',alignItems:'center',gap:9,fontSize:10,letterSpacing:1.2,color:'#bbb'}, formActions:{gridColumn:'1 / -1',display:'flex',gap:10}, button:{border:0,background:'#fff',color:'#000',padding:'14px 18px',fontWeight:700,letterSpacing:1,cursor:'pointer'}, secondary:{background:'transparent',border:'1px solid #555',color:'#fff',padding:'13px 18px',cursor:'pointer',letterSpacing:1}, message:{marginTop:14,color:'#b8ffb8',fontSize:13}, error:{marginTop:14,color:'#ff8e8e',fontSize:13}, sectionHead:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:18,marginBottom:18}, tools:{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end'}, search:{minWidth:150,maxWidth:'100%',background:'#0b0b0b',border:'1px solid #333',color:'#fff',padding:'10px 11px',outline:'none'}, refresh:{background:'transparent',border:'1px solid #444',color:'#fff',padding:'10px 11px',cursor:'pointer',fontSize:10,letterSpacing:1}, muted:{color:'#777'}, list:{display:'grid'}, row:{display:'grid',gridTemplateColumns:'76px 1.5fr 120px auto',gap:16,alignItems:'center',borderTop:'1px solid #252525',padding:'15px 0'}, productVisual:{width:76,height:76,background:'#171717',border:'1px solid #292929',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}, image:{width:'100%',height:'100%',objectFit:'cover'}, noImage:{fontSize:8,letterSpacing:1,color:'#666'}, details:{display:'grid',gap:5,fontSize:12}, stock:{display:'grid',gap:6,justifyItems:'start'}, stockBadge:{padding:'6px 8px',fontSize:9,letterSpacing:1,fontWeight:700}, ok:{background:'#18351e',color:'#9cffaa'}, low:{background:'#493c18',color:'#ffe58a'}, out:{background:'#3b2119',color:'#ff9d88'}, actions:{display:'flex',gap:7,flexWrap:'wrap',justifyContent:'flex-end'}, smallButton:{background:'transparent',border:'1px solid #444',color:'#ddd',padding:'7px 9px',fontSize:9,letterSpacing:1,cursor:'pointer'},
+  '@media(max-width:760px)':{form:{gridTemplateColumns:'1fr'},stats:{gridTemplateColumns:'repeat(2,1fr)'},header:{alignItems:'flex-start',flexDirection:'column'},row:{gridTemplateColumns:'64px 1fr'},stock:{gridColumn:'2'},actions:{gridColumn:'2',justifyContent:'flex-start'}},
 };
