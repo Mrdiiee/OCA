@@ -26,15 +26,17 @@ export async function GET(request) {
   if (orderError) return NextResponse.json({ error: 'Detail pesanan gagal dimuat.' }, { status: 500 });
   if (!order) return NextResponse.json({ error: 'Pesanan tidak ditemukan.' }, { status: 404 });
 
-  const [{ data: profile }, { data: events, error: eventsError }] = await Promise.all([
+  const [{ data: profile }, { data: events, error: eventsError }, { data: items, error: itemsError }] = await Promise.all([
     context.admin.from('profiles').select('id, full_name, phone, address, city, postal_code').eq('id', order.user_id).maybeSingle(),
     context.admin.from('order_tracking_events').select('id, status, description, location, occurred_at').eq('order_id', order.id).order('occurred_at', { ascending: false }),
+    context.admin.from('order_items').select('id, product_id, product_name, quantity, unit_price, created_at').eq('order_id', order.id).order('created_at', { ascending: true }),
   ]);
   if (eventsError) return NextResponse.json({ error: 'Timeline pesanan gagal dimuat.' }, { status: 500 });
+  if (itemsError) return NextResponse.json({ error: 'Item pesanan gagal dimuat.' }, { status: 500 });
 
   let email = null;
   const { data: authUser, error: authError } = await context.admin.auth.admin.getUserById(order.user_id);
   if (!authError) email = authUser?.user?.email || null;
 
-  return NextResponse.json({ order, profile: profile || null, email, events: events || [] });
+  return NextResponse.json({ order, profile: profile || null, email, events: events || [], items: items || [] });
 }
