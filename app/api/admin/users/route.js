@@ -40,6 +40,11 @@ export async function PATCH(request) {
     const { userId, disabled } = await request.json();
     if (!userId || typeof disabled !== 'boolean') return NextResponse.json({ error: 'User dan status wajib diisi.' }, { status: 400 });
     if (context.userId === userId) return NextResponse.json({ error: 'Akun admin yang sedang digunakan tidak dapat dinonaktifkan.' }, { status: 400 });
+    const { data: targetAdmin, error: targetAdminError } = await context.admin.from('admin_users').select('user_id').eq('user_id', userId).maybeSingle();
+    if (targetAdminError) return NextResponse.json({ error: 'Status user gagal diverifikasi.' }, { status: 500 });
+    if (targetAdmin && disabled) return NextResponse.json({ error: 'Akun admin tidak dapat dinonaktifkan dari kontrol user.' }, { status: 403 });
+    const { data: targetUser, error: targetUserError } = await context.admin.auth.admin.getUserById(userId);
+    if (targetUserError || !targetUser?.user) return NextResponse.json({ error: 'User tidak ditemukan.' }, { status: 404 });
     const { error } = await context.admin.auth.admin.updateUserById(userId, { ban_duration: disabled ? '876000h' : 'none' });
     if (error) return NextResponse.json({ error: 'Status user gagal diperbarui.' }, { status: 500 });
     return NextResponse.json({ ok: true });
