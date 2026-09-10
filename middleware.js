@@ -8,6 +8,10 @@ export async function middleware(request) {
   const isAdminLoginPage = pathname === '/admin/login';
   const isLoginPage = pathname.startsWith('/login');
   const isMidtransWebhook = pathname === '/api/midtrans/notification';
+  const isPublicStorefront =
+    pathname === '/' ||
+    pathname === '/produk' ||
+    pathname.startsWith('/produk/');
   const isPublicAuthPage = isLoginPage || isAdminLoginPage;
 
   // Prevent the login page from accepting protocol-relative or external
@@ -24,6 +28,10 @@ export async function middleware(request) {
   // Midtrans server notifications are machine-to-machine requests and do not
   // carry a Supabase browser session. They must reach the webhook directly.
   if (isMidtransWebhook) return response;
+
+  // The storefront is public. Customer account/order pages and admin pages
+  // remain protected below.
+  if (isPublicStorefront) return response;
 
   // Support both the legacy Supabase anon-key names and the newer
   // Vercel/Supabase integration variable names.
