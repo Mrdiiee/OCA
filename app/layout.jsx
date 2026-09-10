@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 const midtransSnapUrl =
-  process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true"
+  process.env.VERCEL_ENV === "production"
     ? "https://app.midtrans.com/snap/snap.js"
     : "https://app.sandbox.midtrans.com/snap/snap.js";
 
