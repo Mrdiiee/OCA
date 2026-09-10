@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
   let response = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
+  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
+  const isAdminLoginPage = pathname === '/admin/login';
+  const isLoginPage = pathname.startsWith('/login');
+  const isPublicAuthPage = isLoginPage || isAdminLoginPage;
 
   // Support both the legacy Supabase anon-key names and the newer
   // Vercel/Supabase integration variable names.
@@ -13,16 +18,13 @@ export async function middleware(request) {
     process.env.SUPABASE_PUBLISHABLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const isLoginPage = request.nextUrl.pathname.startsWith('/login');
-
-  // Never let a missing Supabase configuration turn every request into a
-  // runtime 500. The login page must remain reachable so the deployment can
-  // be diagnosed/configured, while protected pages are redirected there.
+  // Never let missing Supabase configuration turn every request into a 500.
+  // Both login entry points stay reachable so the deployment can be diagnosed.
   if (!supabaseUrl || !supabaseKey) {
-    if (!isLoginPage) {
+    if (!isPublicAuthPage) {
       const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('next', request.nextUrl.pathname);
+      url.pathname = isAdminRoute ? '/admin/login' : '/login';
+      url.searchParams.set('next', pathname);
       return NextResponse.redirect(url);
     }
     return response;
@@ -47,10 +49,14 @@ export async function middleware(request) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Admin login is intentionally public. The login page itself checks the
+  // authenticated user against admin_users before allowing dashboard access.
+  if (isAdminLoginPage) return response;
+
   if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('next', request.nextUrl.pathname);
+    url.pathname = isAdminRoute ? '/admin/login' : '/login';
+    url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
 
