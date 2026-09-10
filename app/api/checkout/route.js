@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 const MIDTRANS_SNAP_URL = "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
@@ -19,27 +18,12 @@ async function getSupabase() {
           try {
             cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
           } catch {
-            // Cookie writes are not required for this read flow.
+            // Cookie writes are not required for this flow.
           }
         },
       },
     }
   );
-}
-
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !secretKey) return null;
-
-  return createSupabaseClient(url, secretKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
 }
 
 export async function POST(request) {
@@ -76,11 +60,6 @@ export async function POST(request) {
       return NextResponse.json({ error: "Silakan login terlebih dahulu agar pesanan dapat dilacak." }, { status: 401 });
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
-    if (!supabaseAdmin) {
-      return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY belum diatur di environment variable." }, { status: 500 });
-    }
-
     const orderId = `OXY-${Date.now()}`;
     const authHeader = "Basic " + Buffer.from(`${serverKey}:`).toString("base64");
     const midtransRes = await fetch(MIDTRANS_SNAP_URL, {
@@ -99,7 +78,7 @@ export async function POST(request) {
       return NextResponse.json({ error: message }, { status: 500 });
     }
 
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
         user_id: user.id,
@@ -115,7 +94,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Transaksi berhasil dibuat, tetapi data pelacakan pesanan gagal disimpan." }, { status: 500 });
     }
 
-    const { error: eventError } = await supabaseAdmin.from("order_tracking_events").insert({
+    const { error: eventError } = await supabase.from("order_tracking_events").insert({
       order_id: order.id,
       status: "pending_payment",
       description: "Pesanan dibuat dan menunggu pembayaran.",
