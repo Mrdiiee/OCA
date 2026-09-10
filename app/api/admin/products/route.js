@@ -22,7 +22,9 @@ function cleanProduct(body) {
   const slug = typeof body?.slug === 'string' ? body.slug.trim().toLowerCase() : '';
   const description = typeof body?.description === 'string' ? body.description.trim() : '';
   const imageUrl = typeof body?.imageUrl === 'string' ? body.imageUrl.trim() : '';
-  return { name, slug, description, imageUrl, price: Number(body?.price), stock: Number(body?.stock) };
+  const category = typeof body?.category === 'string' ? body.category.trim() : '';
+  const subcategory = typeof body?.subcategory === 'string' ? body.subcategory.trim() : '';
+  return { name, slug, description, imageUrl, category, subcategory, price: Number(body?.price), stock: Number(body?.stock) };
 }
 
 function validateProduct(p) {
@@ -30,12 +32,14 @@ function validateProduct(p) {
   if (!p.slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug)) return 'Slug produk tidak valid.';
   if (!Number.isFinite(p.price) || p.price < 0) return 'Harga produk tidak valid.';
   if (!Number.isInteger(p.stock) || p.stock < 0) return 'Stok harus berupa bilangan bulat 0 atau lebih.';
+  if (!p.category) return 'Kategori produk wajib diisi.';
+  if (!p.subcategory) return 'Subkategori produk wajib diisi.';
   if (p.imageUrl && !/^https?:\/\//i.test(p.imageUrl)) return 'URL gambar harus menggunakan http atau https.';
   return null;
 }
 
-const select = 'id, name, slug, description, price, stock, image_url, is_active, created_at, updated_at';
-const patchFields = new Set(['name', 'slug', 'description', 'price', 'stock', 'imageUrl', 'isActive']);
+const select = 'id, name, slug, description, price, stock, image_url, is_active, category, subcategory, created_at, updated_at';
+const patchFields = new Set(['name', 'slug', 'description', 'price', 'stock', 'imageUrl', 'isActive', 'category', 'subcategory']);
 
 export async function GET() {
   const c = await getAdminContext();
@@ -62,6 +66,8 @@ export async function POST(request) {
       p_stock: p.stock,
       p_image_url: p.imageUrl || null,
       p_is_active: body?.isActive !== false,
+      p_category: p.category,
+      p_subcategory: p.subcategory,
     });
     if (error) {
       if (error.code === '23505') return NextResponse.json({ error: 'Slug produk sudah digunakan.' }, { status: 409 });
@@ -98,8 +104,10 @@ export async function PATCH(request) {
       price: Number(current.price),
       stock: Number(current.stock),
       isActive: current.is_active,
+      category: current.category || 'Lainnya',
+      subcategory: current.subcategory || 'Outdoor',
     };
-    if (body.name !== undefined || body.slug !== undefined || body.description !== undefined || body.price !== undefined || body.stock !== undefined || body.imageUrl !== undefined) {
+    if (body.name !== undefined || body.slug !== undefined || body.description !== undefined || body.price !== undefined || body.stock !== undefined || body.imageUrl !== undefined || body.category !== undefined || body.subcategory !== undefined) {
       const p = cleanProduct(body);
       merged = {
         ...merged,
@@ -109,6 +117,8 @@ export async function PATCH(request) {
         imageUrl: body.imageUrl !== undefined ? p.imageUrl : merged.imageUrl,
         price: body.price !== undefined ? p.price : merged.price,
         stock: body.stock !== undefined ? p.stock : merged.stock,
+        category: body.category !== undefined ? p.category : merged.category,
+        subcategory: body.subcategory !== undefined ? p.subcategory : merged.subcategory,
       };
       const v = validateProduct(merged);
       if (v) return NextResponse.json({ error: v }, { status: 400 });
@@ -127,6 +137,8 @@ export async function PATCH(request) {
       p_stock: merged.stock,
       p_image_url: merged.imageUrl || null,
       p_is_active: merged.isActive,
+      p_category: merged.category,
+      p_subcategory: merged.subcategory,
     });
     if (error) {
       if (error.code === '23505') return NextResponse.json({ error: 'Slug produk sudah digunakan.' }, { status: 409 });
