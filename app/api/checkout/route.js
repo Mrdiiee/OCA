@@ -45,10 +45,18 @@ export async function POST(request) {
       return NextResponse.json({ error: "Data pesanan tidak lengkap." }, { status: 400 });
     }
 
-    const requested = items.map((i) => ({ id: String(i.id || ""), qty: Number(i.qty) }));
-    if (requested.some((i) => !i.id || !Number.isInteger(i.qty) || i.qty <= 0)) {
-      return NextResponse.json({ error: "Data item pesanan tidak valid." }, { status: 400 });
+    const requestedMap = new Map();
+    for (const item of items) {
+      const id = String(item?.id || "");
+      const qty = Number(item?.qty);
+      if (!id || !Number.isInteger(qty) || qty <= 0) {
+        return NextResponse.json({ error: "Data item pesanan tidak valid." }, { status: 400 });
+      }
+      requestedMap.set(id, (requestedMap.get(id) || 0) + qty);
     }
+    const requested = [...requestedMap.entries()]
+      .map(([id, qty]) => ({ id, qty }))
+      .sort((a, b) => a.id.localeCompare(b.id));
 
     const supabase = await getSupabase();
     const { data: authData } = await supabase.auth.getUser();
@@ -79,7 +87,7 @@ export async function POST(request) {
       return NextResponse.json({ token: existing.midtrans_snap_token, orderId: existing.order_number, reused: true });
     }
 
-    const ids = [...new Set(requested.map((i) => i.id))];
+    const ids = requested.map((i) => i.id);
     const { data: products, error: pe } = await admin
       .from("products")
       .select("id,name,price,stock,is_active")
