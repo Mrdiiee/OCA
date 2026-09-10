@@ -7,6 +7,7 @@ export async function middleware(request) {
   const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
   const isAdminLoginPage = pathname === '/admin/login';
   const isLoginPage = pathname.startsWith('/login');
+  const isMidtransWebhook = pathname === '/api/midtrans/notification';
   const isPublicAuthPage = isLoginPage || isAdminLoginPage;
 
   // Prevent the login page from accepting protocol-relative or external
@@ -19,6 +20,10 @@ export async function middleware(request) {
       return NextResponse.redirect(url);
     }
   }
+
+  // Midtrans server notifications are machine-to-machine requests and do not
+  // carry a Supabase browser session. They must reach the webhook directly.
+  if (isMidtransWebhook) return response;
 
   // Support both the legacy Supabase anon-key names and the newer
   // Vercel/Supabase integration variable names.
