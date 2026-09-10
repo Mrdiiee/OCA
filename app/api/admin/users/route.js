@@ -13,7 +13,7 @@ async function getAdmin() {
   const { data: adminUser, error: adminError } = await admin.from('admin_users').select('user_id').eq('user_id', data.user.id).maybeSingle();
   if (adminError) return { error: 'Hak akses admin belum dikonfigurasi.', status: 500 };
   if (!adminUser) return { error: 'Akses admin ditolak.', status: 403 };
-  return { admin };
+  return { admin, userId: data.user.id };
 }
 
 export async function GET() {
@@ -39,8 +39,7 @@ export async function PATCH(request) {
   try {
     const { userId, disabled } = await request.json();
     if (!userId || typeof disabled !== 'boolean') return NextResponse.json({ error: 'User dan status wajib diisi.' }, { status: 400 });
-    const { data: authData } = await context.admin.auth.getUser();
-    if (authData?.user?.id === userId) return NextResponse.json({ error: 'Akun admin yang sedang digunakan tidak dapat dinonaktifkan.' }, { status: 400 });
+    if (context.userId === userId) return NextResponse.json({ error: 'Akun admin yang sedang digunakan tidak dapat dinonaktifkan.' }, { status: 400 });
     const { error } = await context.admin.auth.admin.updateUserById(userId, { ban_duration: disabled ? '876000h' : 'none' });
     if (error) return NextResponse.json({ error: 'Status user gagal diperbarui.' }, { status: 500 });
     return NextResponse.json({ ok: true });
