@@ -1,13 +1,94 @@
 "use client";
-import { useEffect, useState } from "react";
-const fmt=n=>"Rp "+Number(n||0).toLocaleString("id-ID");
-const fallbackImage="https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1400&q=85";
-export default function ProductDetail({params}){
- const[product,setProduct]=useState(null);const[loading,setLoading]=useState(true);const[error,setError]=useState("");const[qty,setQty]=useState(1);const[added,setAdded]=useState(false);
- useEffect(()=>{let active=true;(async()=>{try{const resolved=await params;const slug=resolved?.slug;if(!slug)throw new Error("Produk tidak ditemukan.");const r=await fetch(`/api/products?slug=${encodeURIComponent(slug)}`,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error||"Produk tidak ditemukan.");if(active){setProduct(d.product);setQty(q=>Math.min(q,Number(d.product?.stock||0)||1))}}catch(e){if(active)setError(e.message||"Produk tidak ditemukan")}finally{if(active)setLoading(false)}})();return()=>{active=false}},[params]);
- function goCheckout(){if(!product||!product.stock)return;const item={...product,qty:Math.min(qty,Number(product.stock))};try{localStorage.setItem("oxygen_cart",JSON.stringify([item]));setAdded(true);window.location.href="/produk"}catch{setError("Keranjang tidak dapat disimpan. Silakan coba lagi.")}}
- if(loading)return <main className="page"><p className="status">Memuat produk...</p></main>;
- if(error||!product)return <main className="page"><a className="back" href="/produk">← Kembali ke produk</a><div className="error">{error||"Produk tidak ditemukan."}</div></main>;
- const max=Number(product.stock||0);
- return <main className="page"><style>{`body{margin:0;background:#0b0b0a;color:#f7f6f3;font-family:Arial,sans-serif}.page{min-height:100vh;padding:40px clamp(20px,6vw,90px)}a{color:#f7f6f3}.back{display:inline-block;margin-bottom:45px;text-decoration:none;font-size:12px;letter-spacing:.08em}.layout{display:grid;grid-template-columns:1.1fr .9fr;gap:50px;max-width:1200px;margin:auto}.visual{min-height:520px;background:#111;overflow:hidden;border:1px solid #2e2c28;position:relative}.visual img{width:100%;height:100%;min-height:520px;object-fit:cover;display:block}.visual-fallback{position:absolute;inset:0;display:grid;place-items:center;color:#777;background:#151412;font-size:12px;letter-spacing:.08em}.eyebrow{color:#e1261c;font-size:12px;letter-spacing:2px}.title{font-size:clamp(44px,7vw,88px);line-height:.95;margin:14px 0 22px;letter-spacing:-.04em}.kind{color:#8c897f}.description{color:#b7b3aa;line-height:1.8;font-size:16px}.price{font-size:28px;font-weight:bold;margin:30px 0 8px}.stock{color:#8c897f}.qty{display:flex;align-items:center;gap:12px;margin:28px 0}.qty button{width:42px;height:42px;background:transparent;border:1px solid #444;color:#fff;font-size:20px;cursor:pointer}.qty button:hover:not(:disabled){border-color:#e1261c;color:#e1261c}.qty button:disabled{opacity:.3;cursor:not-allowed}.qty span{min-width:30px;text-align:center}.buy{width:100%;padding:16px;border:1px solid #eee;background:#eee;color:#111;font-weight:bold;cursor:pointer}.buy:hover:not(:disabled){background:#e1261c;border-color:#e1261c;color:#fff}.buy:disabled{opacity:.4;cursor:not-allowed}.notice{border:1px solid #354b35;color:#a9d6a9;padding:12px;margin:18px 0;font-size:12px}.error{border:1px solid #7c4b47;color:#ff8178;padding:12px;margin:18px 0;line-height:1.5}.status{color:#8c897f}@media(max-width:800px){.page{padding:24px}.layout{grid-template-columns:1fr;gap:28px}.visual,.visual img{min-height:340px}.title{font-size:clamp(42px,14vw,68px)}.description{font-size:14px}.price{font-size:24px}}`}</style><a className="back" href="/produk">← KEMBALI KE PRODUK</a><div className="layout"><div className="visual"><img src={product.image||fallbackImage} alt={product.name} onError={e=>{e.currentTarget.style.display="none";e.currentTarget.nextElementSibling.style.display="grid"}}/><div className="visual-fallback" style={{display:"none"}}>IMAGE OXYGEN GEAR</div></div><section><div className="eyebrow">OXYGEN GEAR / DETAIL</div><div className="kind">{product.category||"Gear"} · {product.kind||"Outdoor"}</div><h1 className="title">{product.name}</h1><p className="description">{product.description||product.blurb||"Perlengkapan outdoor pilihan untuk perjalanan yang lebih siap."}</p><div className="price">{fmt(product.price)}</div><div className="stock">{max>0?`Stok tersedia: ${max}`:"Stok habis"}</div><div className="qty"><button type="button" disabled={qty<=1||!max} onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button><span>{qty}</span><button type="button" disabled={!max||qty>=max} onClick={()=>setQty(q=>Math.min(max,q+1))}>+</button></div>{added&&<div className="notice">Produk sudah disiapkan di keranjang. Membuka halaman produk untuk melanjutkan checkout...</div>}<button className="buy" type="button" disabled={!max} onClick={goCheckout}>{max?`BELI SEKARANG · ${fmt(product.price*qty)}`:"STOK HABIS"}</button></section></div></main>;
+
+import { useEffect, useMemo, useState } from "react";
+
+const fmt = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
+const fallbackImage = "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1400&q=85";
+
+export default function ProductDetail({ params }) {
+  const [product, setProduct] = useState(null);
+  const [related, setRelated] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [qty, setQty] = useState(1);
+  const [added, setAdded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const resolved = await params;
+        const slug = resolved?.slug;
+        if (!slug) throw new Error("Produk tidak ditemukan.");
+        const [one, all] = await Promise.all([
+          fetch(`/api/products?slug=${encodeURIComponent(slug)}`, { cache: "no-store" }),
+          fetch("/api/products", { cache: "no-store" }),
+        ]);
+        const oneData = await one.json();
+        const allData = await all.json();
+        if (!one.ok) throw new Error(oneData.error || "Produk tidak ditemukan.");
+        if (!active) return;
+        const current = oneData.product;
+        setProduct(current);
+        setRelated((allData.products || []).filter((p) => p.id !== current.id && p.category === current.category).slice(0, 4));
+        setQty((q) => Math.max(1, Math.min(q, Number(current.stock || 0) || 1)));
+      } catch (e) {
+        if (active) setError(e.message || "Produk tidak ditemukan.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [params]);
+
+  const max = Number(product?.stock || 0);
+  const total = useMemo(() => Number(product?.price || 0) * qty, [product, qty]);
+
+  function saveCart(goToCart) {
+    if (!product || !max) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("oxygen_cart") || "[]");
+      const current = Array.isArray(saved) ? saved : [];
+      const existing = current.find((item) => item.id === product.id);
+      const nextQty = Math.min((existing?.qty || 0) + qty, max);
+      const next = existing
+        ? current.map((item) => item.id === product.id ? { ...item, ...product, qty: nextQty } : item)
+        : [...current, { ...product, qty }];
+      localStorage.setItem("oxygen_cart", JSON.stringify(next));
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1800);
+      if (goToCart) window.location.href = "/produk?cart=1";
+    } catch {
+      setError("Keranjang tidak dapat disimpan. Silakan coba lagi.");
+    }
+  }
+
+  if (loading) return <main className="detailPage"><style>{styles}</style><p className="status">Memuat detail produk...</p></main>;
+  if (error || !product) return <main className="detailPage"><style>{styles}</style><a className="back" href="/produk">← KEMBALI KE PRODUK</a><div className="notFound"><span>404 / PRODUCT</span><h1>Produk tidak ditemukan.</h1><p>{error || "Produk yang kamu cari tidak tersedia."}</p><a className="primary" href="/produk">Lihat semua produk</a></div></main>;
+
+  return <main className="detailPage">
+    <style>{styles}</style>
+    <a className="back" href="/produk">← SEMUA PRODUK</a>
+    <div className="crumb">OXYGEN GEAR / {product.category?.toUpperCase()} / {product.subcategory?.toUpperCase()}</div>
+    <section className="hero">
+      <div className="gallery"><img src={product.image || fallbackImage} alt={product.name} onError={(e) => { e.currentTarget.src = fallbackImage; }} />{!max && <span className="soldout">STOK HABIS</span>}</div>
+      <div className="info">
+        <div className="eyebrow">{product.subcategory || product.category || "OUTDOOR"}</div>
+        <h1>{product.name}</h1>
+        <div className="price">{fmt(product.price)}</div>
+        <p className="description">{product.description || product.blurb || "Perlengkapan outdoor pilihan Oxygen Gear."}</p>
+        <div className="stockLine"><span className={max ? "dot" : "dot off"}></span>{max ? `${max} unit tersedia` : "Stok sedang habis"}</div>
+        {max > 0 && <div className="buyBox">
+          <div className="qtyLabel">JUMLAH</div>
+          <div className="purchaseRow"><div className="qty"><button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button><strong>{qty}</strong><button type="button" onClick={() => setQty((q) => Math.min(max, q + 1))}>+</button></div><div className="lineTotal">{fmt(total)}</div></div>
+          <div className="actions"><button className="secondary" type="button" onClick={() => saveCart(false)}>{added ? "✓ Ditambahkan" : "Tambah ke keranjang"}</button><button className="primary" type="button" onClick={() => saveCart(true)}>Beli sekarang</button></div>
+        </div>}
+        <div className="trust"><div><b>CHECKOUT AMAN</b><span>Pesanan diproses melalui sistem pembayaran resmi.</span></div><div><b>PENGIRIMAN</b><span>Alamat pengiriman dikonfirmasi saat checkout.</span></div></div>
+      </div>
+    </section>
+    <section className="details"><div><span className="sectionLabel">01 / DESKRIPSI</span><h2>Built for the outdoors.</h2></div><div className="detailCopy"><p>{product.description || "Perlengkapan outdoor pilihan Oxygen Gear yang dirancang untuk menemani aktivitas di luar ruang."}</p><dl><div><dt>Kategori</dt><dd>{product.category || "Lainnya"}</dd></div><div><dt>Subkategori</dt><dd>{product.subcategory || "Outdoor"}</dd></div><div><dt>Kode</dt><dd>{product.code || product.slug}</dd></div><div><dt>Ketersediaan</dt><dd>{max ? "Tersedia" : "Habis"}</dd></div></dl></div></section>
+    {related.length > 0 && <section className="related"><div className="sectionHead"><div><span className="sectionLabel">02 / PILIHAN LAIN</span><h2>Produk terkait.</h2></div><a href={`/produk?category=${encodeURIComponent(product.category || "")}`}>Lihat kategori →</a></div><div className="relatedGrid">{related.map((p) => <a className="relatedCard" href={`/produk/${p.slug}`} key={p.id}><div className="relatedImage"><img src={p.image || fallbackImage} alt={p.name} /></div><span>{p.subcategory || p.category}</span><h3>{p.name}</h3><b>{fmt(p.price)}</b></a>)}</div></section>}
+  </main>;
 }
+
+const styles = `body{margin:0;background:#0b0b0a;color:#f7f6f3;font-family:Arial,sans-serif}.detailPage{min-height:100vh;padding:40px clamp(20px,6vw,90px) 100px}.detailPage a{color:#f7f6f3}.back{display:inline-block;text-decoration:none;font-size:11px;letter-spacing:1.5px;margin-bottom:42px}.crumb{color:#777;font-size:10px;letter-spacing:1.5px;margin-bottom:20px}.hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:clamp(30px,6vw,90px);align-items:start}.gallery{height:min(70vh,720px);min-height:480px;background:#151412;position:relative;overflow:hidden}.gallery img{width:100%;height:100%;object-fit:cover;display:block}.soldout{position:absolute;left:18px;top:18px;background:#e1261c;color:#fff;padding:9px 12px;font-size:10px;font-weight:bold}.info{padding:15px 0}.eyebrow,.sectionLabel{color:#e1261c;font-size:10px;letter-spacing:2px}.info h1{font-size:clamp(42px,6vw,82px);line-height:.94;margin:14px 0 22px;letter-spacing:-2px}.price{font-size:22px;font-weight:bold}.description{color:#b7b3aa;line-height:1.75;font-size:15px;max-width:600px;margin:26px 0}.stockLine{border-top:1px solid #2e2c28;border-bottom:1px solid #2e2c28;padding:14px 0;color:#aaa;font-size:12px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#79b47a;margin-right:8px}.dot.off{background:#e1261c}.buyBox{margin-top:25px}.qtyLabel{font-size:10px;letter-spacing:1.5px;color:#777}.purchaseRow{display:flex;justify-content:space-between;align-items:center;margin:10px 0 15px}.qty{display:flex;align-items:center;gap:18px;border:1px solid #333;padding:4px 8px}.qty button{width:28px;height:28px;border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer}.lineTotal{font-size:15px;font-weight:bold}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions button,.primary{padding:15px;border:1px solid #eee;background:#eee;color:#111;font-weight:bold;cursor:pointer;text-decoration:none;text-align:center}.actions .secondary,.secondary{background:transparent;color:#eee;border-color:#444}.actions button:hover,.primary:hover{background:#e1261c;border-color:#e1261c;color:#fff}.trust{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:35px}.trust div{border-top:1px solid #2e2c28;padding-top:13px}.trust b{display:block;font-size:9px;letter-spacing:1.3px;margin-bottom:7px}.trust span{display:block;color:#777;font-size:11px;line-height:1.5}.details{display:grid;grid-template-columns:1fr 1fr;gap:60px;border-top:1px solid #2e2c28;margin-top:100px;padding-top:45px}.details h2,.related h2{font-size:clamp(32px,4vw,54px);margin:12px 0;line-height:1}.detailCopy{max-width:650px}.detailCopy p{color:#b7b3aa;line-height:1.8;margin-top:0}.detailCopy dl{margin:35px 0 0}.detailCopy dl div{display:flex;justify-content:space-between;border-top:1px solid #2e2c28;padding:13px 0;gap:20px}.detailCopy dt{color:#777}.detailCopy dd{margin:0}.related{margin-top:100px}.sectionHead{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:25px}.sectionHead>a{font-size:11px;text-decoration:none}.relatedGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.relatedCard{text-decoration:none;border:1px solid #2e2c28;padding:12px}.relatedImage{height:220px;background:#151412;overflow:hidden;margin-bottom:18px}.relatedImage img{width:100%;height:100%;object-fit:cover;transition:transform .3s}.relatedCard:hover .relatedImage img{transform:scale(1.04)}.relatedCard>span{color:#777;font-size:10px}.relatedCard h3{font-size:20px;margin:8px 0}.relatedCard>b{font-size:13px}.status{color:#888}.notFound{max-width:700px;padding:80px 0}.notFound>span{color:#e1261c;font-size:10px;letter-spacing:2px}.notFound h1{font-size:clamp(42px,7vw,80px);line-height:.95}.notFound p{color:#888;margin-bottom:30px}.notFound .primary{display:inline-block}@media(max-width:900px){.hero{grid-template-columns:1fr}.gallery{height:60vh;min-height:360px}.details{grid-template-columns:1fr;gap:20px}.relatedGrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.detailPage{padding:25px 20px 70px}.gallery{height:62vw;min-height:300px}.info h1{font-size:46px}.trust{grid-template-columns:1fr}.actions{grid-template-columns:1fr}.relatedGrid{grid-template-columns:1fr 1fr}.relatedImage{height:150px}.details{margin-top:65px}}`;
