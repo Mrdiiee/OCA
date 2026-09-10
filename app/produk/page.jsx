@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { createClient } from "../../lib/supabase-browser";
 const fmt=n=>"Rp "+Number(n||0).toLocaleString("id-ID");
 const fallbackImage="https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1200&q=85";
 export default function Produk(){const supabase=useMemo(()=>createClient(),[]);const[products,setProducts]=useState([]);const[loading,setLoading]=useState(true);const[loadError,setLoadError]=useState("");const[cart,setCart]=useState([]);const[open,setOpen]=useState(false);const[checkoutOpen,setCheckoutOpen]=useState(false);const[error,setError]=useState("");const[paying,setPaying]=useState(false);const[name,setName]=useState("");const[phone,setPhone]=useState("");const[address,setAddress]=useState("");const[checkoutKey,setCheckoutKey]=useState("");
