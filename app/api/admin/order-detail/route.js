@@ -22,21 +22,27 @@ export async function GET(request) {
   const orderId = new URL(request.url).searchParams.get('id');
   if (!orderId) return NextResponse.json({ error: 'ID pesanan wajib diisi.' }, { status: 400 });
 
-  const { data: order, error: orderError } = await context.admin.from('orders').select('id, user_id, order_number, status, courier, tracking_number, estimated_delivery, total_amount, created_at, updated_at').eq('id', orderId).maybeSingle();
+  const { data: order, error: orderError } = await context.admin
+    .from('orders')
+    .select('id, user_id, order_number, status, payment_status, payment_type, transaction_id, gross_amount, payment_settled_at, courier, tracking_number, estimated_delivery, total_amount, created_at, updated_at')
+    .eq('id', orderId)
+    .maybeSingle();
   if (orderError) return NextResponse.json({ error: 'Detail pesanan gagal dimuat.' }, { status: 500 });
   if (!order) return NextResponse.json({ error: 'Pesanan tidak ditemukan.' }, { status: 404 });
 
-  const [{ data: profile }, { data: events, error: eventsError }, { data: items, error: itemsError }] = await Promise.all([
+  const [{ data: profile }, { data: events, error: eventsError }, { data: items, error: itemsError }, { data: stockMovements, error: stockError }] = await Promise.all([
     context.admin.from('profiles').select('id, full_name, phone, address, city, postal_code').eq('id', order.user_id).maybeSingle(),
     context.admin.from('order_tracking_events').select('id, status, description, location, occurred_at').eq('order_id', order.id).order('occurred_at', { ascending: false }),
     context.admin.from('order_items').select('id, product_id, product_name, quantity, unit_price, created_at').eq('order_id', order.id).order('created_at', { ascending: true }),
+    context.admin.from('stock_movements').select('id, product_id, quantity_delta, stock_before, stock_after, movement_type, note, created_at, products(name, slug)').eq('order_id', order.id).order('created_at', { ascending: true }),
   ]);
   if (eventsError) return NextResponse.json({ error: 'Timeline pesanan gagal dimuat.' }, { status: 500 });
   if (itemsError) return NextResponse.json({ error: 'Item pesanan gagal dimuat.' }, { status: 500 });
+  if (stockError) return NextResponse.json({ error: 'Audit stok pesanan gagal dimuat.' }, { status: 500 });
 
   let email = null;
   const { data: authUser, error: authError } = await context.admin.auth.admin.getUserById(order.user_id);
   if (!authError) email = authUser?.user?.email || null;
 
-  return NextResponse.json({ order, profile: profile || null, email, events: events || [], items: items || [] });
+  return NextResponse.json({ order, profile: profile || null, email, events: events || [], items: items || [], stockMovements: stockMovements || [] });
 }
