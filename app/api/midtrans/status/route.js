@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../../../lib/supabase-server";
 
-const MIDTRANS_STATUS_URL = "https://api.sandbox.midtrans.com/v2";
+function getMidtransBaseUrl() {
+  return process.env.MIDTRANS_IS_PRODUCTION === "true"
+    ? "https://api.midtrans.com/v2"
+    : "https://api.sandbox.midtrans.com/v2";
+}
 
 function getAdminClient() {
   return createSupabaseAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
@@ -41,7 +45,7 @@ export async function GET(request) {
     if (order.status === "paid") return NextResponse.json({ ok: true, status: "paid", reused: true });
 
     const authHeader = "Basic " + Buffer.from(`${serverKey}:`).toString("base64");
-    const response = await fetch(`${MIDTRANS_STATUS_URL}/${encodeURIComponent(order.order_number)}/status`, {
+    const response = await fetch(`${getMidtransBaseUrl()}/${encodeURIComponent(order.order_number)}/status`, {
       method: "GET",
       headers: { Accept: "application/json", Authorization: authHeader },
       cache: "no-store",
@@ -60,6 +64,7 @@ export async function GET(request) {
 
     let paidAt = null;
     if (isSuccessfulPayment(body)) {
+      if (!body.transaction_id) return NextResponse.json({ error: "Transaction ID Midtrans tidak tersedia." }, { status: 409 });
       if (body.settlement_time) {
         const raw = String(body.settlement_time);
         const parsed = new Date(raw.includes("T") ? raw : raw.replace(" ", "T") + "+07:00");
