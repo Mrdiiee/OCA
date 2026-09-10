@@ -4,19 +4,12 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 function getMidtransSnapUrl() {
-  return process.env.MIDTRANS_IS_PRODUCTION === "true"
-    ? "https://app.midtrans.com/snap/v1/transactions"
-    : "https://app.sandbox.midtrans.com/snap/v1/transactions";
+  return process.env.MIDTRANS_IS_PRODUCTION === "true" ? "https://app.midtrans.com/snap/v1/transactions" : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 }
 
 async function getSupabase() {
   const cookieStore = await cookies();
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-    cookies: {
-      getAll() { return cookieStore.getAll(); },
-      setAll(c) { try { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {} }
-    }
-  });
+  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { cookies: { getAll() { return cookieStore.getAll(); }, setAll(c) { try { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {} } } });
 }
 
 export async function POST(request) {
@@ -58,7 +51,6 @@ export async function POST(request) {
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) return NextResponse.json({ error: 'MIDTRANS_SERVER_KEY belum diatur di environment variable.' }, { status: 500 });
 
-    // Save the local order first so a failed external call is recoverable with the same idempotency key.
     let order = existing;
     if (!order) {
       const orderId = `OXY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -72,31 +64,28 @@ export async function POST(request) {
     }
     if (Number(order.total_amount) !== total) return NextResponse.json({ error: 'Checkout ini sudah dipakai untuk pesanan dengan total berbeda.' }, { status: 409 });
 
-    const { error: ie } = await admin.from('order_items').upsert(verified.map(i => ({ order_id: order.id, product_id: i.product_id, product_name: i.product_name, quantity: i.quantity, unit_price: i.unit_price })), { onConflict: 'order_id,product_id' });
-    if (ie) {
-      console.error('Gagal menyimpan detail order sebelum transaksi Midtrans dibuat:', ie);
-      return NextResponse.json({ error: 'Detail pesanan belum dapat disimpan. Silakan coba lagi.' }, { status: 500 });
+    const { data: savedItems, error: savedItemsError } = await admin.from('order_items').select('product_id,quantity,unit_price').eq('order_id', order.id);
+    if (savedItemsError) return NextResponse.json({ error: 'Detail pesanan tidak dapat diverifikasi. Silakan coba lagi.' }, { status: 500 });
+    if (savedItems?.length) {
+      const sameItems = savedItems.length === verified.length && verified.every(v => savedItems.some(s => s.product_id === v.product_id && Number(s.quantity) === v.quantity && Number(s.unit_price) === v.unit_price));
+      if (!sameItems) return NextResponse.json({ error: 'Checkout ini sudah dipakai untuk keranjang yang berbeda.' }, { status: 409 });
+    } else {
+      const { error: ie } = await admin.from('order_items').insert(verified.map(i => ({ order_id: order.id, product_id: i.product_id, product_name: i.product_name, quantity: i.quantity, unit_price: i.unit_price })));
+      if (ie) { console.error('Gagal menyimpan detail order:', ie); return NextResponse.json({ error: 'Detail pesanan belum dapat disimpan. Silakan coba lagi.' }, { status: 500 }); }
     }
 
     await admin.from('profiles').upsert({ id: user.id, full_name: String(name).trim(), phone: String(phone).trim(), address: String(address).trim(), updated_at: new Date().toISOString() }, { onConflict: 'id' });
     const { error: eventError } = await admin.from('order_tracking_events').insert({ order_id: order.id, status: 'pending_payment', description: 'Pesanan dibuat dan menunggu pembayaran.' });
-    if (eventError && eventError.code !== '23505') console.error(eventError);
+    if (eventError) console.error(eventError);
 
     const authHeader = 'Basic ' + Buffer.from(`${serverKey}:`).toString('base64');
-    const midtransRes = await fetch(getMidtransSnapUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: authHeader, 'Idempotency-Key': checkoutKey },
-      body: JSON.stringify({ transaction_details: { order_id: order.order_number, gross_amount: total }, customer_details: { first_name: String(name).trim(), phone: String(phone).trim(), billing_address: { address: String(address).trim() } }, item_details: verified.map(i => ({ id: i.product_id, price: i.unit_price, quantity: i.quantity, name: i.product_name })) })
-    });
+    const midtransRes = await fetch(getMidtransSnapUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: authHeader, 'Idempotency-Key': checkoutKey }, body: JSON.stringify({ transaction_details: { order_id: order.order_number, gross_amount: total }, customer_details: { first_name: String(name).trim(), phone: String(phone).trim(), billing_address: { address: String(address).trim() } }, item_details: verified.map(i => ({ id: i.product_id, price: i.unit_price, quantity: i.quantity, name: i.product_name })) }) });
     const midtrans = await midtransRes.json();
     if (!midtransRes.ok) return NextResponse.json({ error: (Array.isArray(midtrans.error_messages) && midtrans.error_messages.join(', ')) || 'Gagal membuat transaksi Midtrans. Pesanan tetap tersimpan dan dapat dicoba kembali.' }, { status: 500 });
     if (!midtrans.token) return NextResponse.json({ error: 'Midtrans tidak mengembalikan token pembayaran. Silakan coba lagi.' }, { status: 502 });
 
     const { error: updateError } = await admin.from('orders').update({ midtrans_snap_token: midtrans.token }).eq('id', order.id).is('midtrans_snap_token', null);
-    if (updateError) {
-      console.error('Gagal menyimpan Snap token:', updateError);
-      return NextResponse.json({ error: 'Transaksi pembayaran dibuat, tetapi token belum tersimpan. Silakan coba lagi dengan tombol pembayaran yang sama.' }, { status: 500 });
-    }
+    if (updateError) { console.error('Gagal menyimpan Snap token:', updateError); return NextResponse.json({ error: 'Transaksi pembayaran dibuat, tetapi token belum tersimpan. Silakan coba lagi dengan tombol pembayaran yang sama.' }, { status: 500 }); }
     return NextResponse.json({ token: midtrans.token, orderId: order.order_number });
   } catch (err) {
     console.error('Checkout error:', err);
