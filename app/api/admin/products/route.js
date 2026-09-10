@@ -35,13 +35,14 @@ function validateProduct(p) {
 }
 
 const select = 'id, name, slug, description, price, stock, image_url, is_active, created_at, updated_at';
+const patchFields = new Set(['name', 'slug', 'description', 'price', 'stock', 'imageUrl', 'isActive']);
 
 export async function GET() {
   const c = await getAdminContext();
   if (c.error) return NextResponse.json({ error: c.error }, { status: c.status });
   const { data, error } = await c.admin.from('products').select(select).order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: 'Daftar produk gagal dimuat.' }, { status: 500 });
-  return NextResponse.json({ products: data || [] });
+  return NextResponse.json({ products: data || [] }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(request) {
@@ -64,7 +65,8 @@ export async function POST(request) {
     });
     if (error) {
       if (error.code === '23505') return NextResponse.json({ error: 'Slug produk sudah digunakan.' }, { status: 409 });
-      return NextResponse.json({ error: error.message || 'Produk gagal dibuat.' }, { status: 400 });
+      console.error('admin_create_product RPC failed:', error);
+      return NextResponse.json({ error: 'Produk gagal dibuat.' }, { status: 500 });
     }
     return NextResponse.json({ ok: true, product: data }, { status: 201 });
   } catch (error) {
@@ -80,6 +82,10 @@ export async function PATCH(request) {
     const body = await request.json();
     const id = typeof body?.id === 'string' ? body.id : '';
     if (!id) return NextResponse.json({ error: 'ID produk wajib diisi.' }, { status: 400 });
+
+    const changes = Object.keys(body).filter((key) => key !== 'id');
+    if (!changes.length) return NextResponse.json({ error: 'Tidak ada perubahan.' }, { status: 400 });
+    if (changes.some((key) => !patchFields.has(key))) return NextResponse.json({ error: 'Field perubahan tidak valid.' }, { status: 400 });
 
     const { data: current, error: currentError } = await c.admin.from('products').select(select).eq('id', id).single();
     if (currentError || !current) return NextResponse.json({ error: 'Produk tidak ditemukan.' }, { status: 404 });
@@ -111,7 +117,6 @@ export async function PATCH(request) {
       if (typeof body.isActive !== 'boolean') return NextResponse.json({ error: 'Status aktif tidak valid.' }, { status: 400 });
       merged.isActive = body.isActive;
     }
-    if (!Object.keys(body).some((key) => key !== 'id')) return NextResponse.json({ error: 'Tidak ada perubahan.' }, { status: 400 });
 
     const { data, error } = await c.admin.rpc('admin_update_product', {
       p_id: id,
@@ -126,7 +131,8 @@ export async function PATCH(request) {
     if (error) {
       if (error.code === '23505') return NextResponse.json({ error: 'Slug produk sudah digunakan.' }, { status: 409 });
       if (error.code === 'P0002') return NextResponse.json({ error: 'Produk tidak ditemukan.' }, { status: 404 });
-      return NextResponse.json({ error: error.message || 'Produk gagal diperbarui.' }, { status: 400 });
+      console.error('admin_update_product RPC failed:', error);
+      return NextResponse.json({ error: 'Produk gagal diperbarui.' }, { status: 500 });
     }
     return NextResponse.json({ ok: true, product: data });
   } catch (error) {
