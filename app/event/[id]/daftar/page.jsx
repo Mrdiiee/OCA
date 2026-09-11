@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { createClient } from "../../../../lib/supabase-browser";
 
 const EVENT_NAMES = { "pendakian-bersama": "Pendakian Bersama", ekspedisi: "Ekspedisi", "private-trip": "Private Trip Papandayan" };
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export default function EventRegistrationPage() {
   const { id } = useParams();
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState(null);
   const [form, setForm] = useState({ fullName: "", phone: "", emergencyContactName: "", emergencyContactPhone: "", notes: "" });
   const [loading, setLoading] = useState(true);
@@ -21,45 +21,52 @@ export default function EventRegistrationPage() {
     let mounted = true;
 
     async function loadSession() {
-      try {
-        // getSession() reads the existing browser session and does not wait on a
-        // network request to /auth/v1/user, so the form can render immediately.
-        const { data, error: sessionError } = await supabase.auth.getSession();
-        if (!mounted) return;
-        if (sessionError) throw sessionError;
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (!mounted) return;
 
-        const sessionUser = data?.session?.user;
-        if (!sessionUser) {
-          router.replace(`/login?next=${encodeURIComponent(`/event/${id}/daftar`)}`);
-          return;
-        }
-
-        setUser(sessionUser);
-        setForm((current) => ({
-          ...current,
-          fullName: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || "",
-        }));
-        setLoading(false);
-      } catch (sessionError) {
-        if (!mounted) return;
+      if (sessionError) {
         setError("Sesi login tidak dapat dibaca. Silakan login kembali.");
         setLoading(false);
+        return;
       }
+
+      const sessionUser = data?.session?.user;
+      if (!sessionUser) {
+        router.replace(`/login?next=${encodeURIComponent(`/event/${id}/daftar`)}`);
+        return;
+      }
+
+      setUser(sessionUser);
+      setForm((current) => ({
+        ...current,
+        fullName: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || "",
+      }));
+      setLoading(false);
     }
 
     loadSession();
 
-    const timeout = window.setTimeout(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      setLoading(false);
-      setError((current) => current || "Sesi login belum terbaca. Silakan login kembali lalu buka halaman pendaftaran.");
-    }, 5000);
+      const sessionUser = session?.user || null;
+      if (sessionUser) {
+        setUser(sessionUser);
+        setForm((current) => ({
+          ...current,
+          fullName: current.fullName || sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || "",
+        }));
+        setError("");
+        setLoading(false);
+      } else {
+        setUser(null);
+      }
+    });
 
     return () => {
       mounted = false;
-      window.clearTimeout(timeout);
+      authListener?.subscription?.unsubscribe();
     };
-  }, [id, router]);
+  }, [id, router, supabase]);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
