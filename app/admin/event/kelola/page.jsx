@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-const EMPTY = { id:'', title:'', type:'PENDAKIAN BERSAMA', subtitle:'', description:'', cover_image_url:'', status:'SEGERA HADIR', event_date:'', location:'', price:'', quota:'', registration_enabled:false, published:true, sort_order:0 };
+const EVENT_TYPES = ['PENDAKIAN BERSAMA', 'EKSPEDISI', 'PRIVATE TRIP'];
+const EMPTY = { id:'', title:'', type:EVENT_TYPES[0], subtitle:'', description:'', cover_image_url:'', status:'SEGERA HADIR', event_date:'', location:'', price:'', quota:'', registration_enabled:false, published:true, sort_order:0 };
 const STATUSES = ['TERSEDIA','SEGERA HADIR','DITUTUP','SELESAI'];
 const MAX_IMAGE = 5 * 1024 * 1024;
 
 export default function ManageEventsPage() {
+  const router=useRouter();
   const [events,setEvents]=useState([]); const [form,setForm]=useState(EMPTY); const [editing,setEditing]=useState(false); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [uploading,setUploading]=useState(false); const [error,setError]=useState(''); const [message,setMessage]=useState('');
-  async function load(){ setLoading(true); setError(''); try { const r=await fetch('/api/admin/events',{cache:'no-store'}); const d=await r.json(); if(r.status===401||r.status===403){window.location.replace('/admin/login');return;} if(!r.ok)throw new Error(d.error); setEvents(d.events||[]); } catch(e){setError(e.message||'Event gagal dimuat.')} finally{setLoading(false)} }
+  async function load(){ setLoading(true); setError(''); try { const r=await fetch('/api/admin/events',{cache:'no-store'}); const d=await r.json(); if(r.status===401||r.status===403){router.replace('/admin/login');return;} if(!r.ok)throw new Error(d.error); setEvents(d.events||[]); } catch(e){setError(e.message||'Event gagal dimuat.')} finally{setLoading(false)} }
   useEffect(()=>{load()},[]);
   const set=(key,value)=>setForm(x=>({...x,[key]:value}));
   function edit(item){ setForm({...EMPTY,...item,event_date:item.event_date?new Date(item.event_date).toISOString().slice(0,16):''}); setEditing(true); setError('');setMessage(''); window.scrollTo({top:0,behavior:'smooth'}); }
@@ -19,17 +22,14 @@ export default function ManageEventsPage() {
     if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setError('Foto harus JPG, PNG, atau WEBP.');return;}
     if(file.size>MAX_IMAGE){setError('Ukuran foto maksimal 5 MB.');return;}
     setUploading(true);setError('');setMessage('');
-    try{
-      const r=await fetch('/api/admin/event-cover',{method:'POST',headers:{'Content-Type':file.type,'X-File-Name':encodeURIComponent(file.name)},body:file});
-      const d=await r.json(); if(r.status===401||r.status===403){window.location.replace('/admin/login');return;} if(!r.ok)throw new Error(d.error); set('cover_image_url',d.url); setMessage('Foto event berhasil diunggah.');
-    }catch(e){setError(e.message||'Foto gagal diunggah.')}finally{setUploading(false)}
+    try{const r=await fetch('/api/admin/event-cover',{method:'POST',headers:{'Content-Type':file.type,'X-File-Name':encodeURIComponent(file.name)},body:file});const d=await r.json();if(r.status===401||r.status===403){router.replace('/admin/login');return;}if(!r.ok)throw new Error(d.error);set('cover_image_url',d.url);setMessage('Foto event berhasil diunggah.')}catch(e){setError(e.message||'Foto gagal diunggah.')}finally{setUploading(false)}
   }
-  async function save(e){e.preventDefault();setSaving(true);setError('');setMessage(''); const payload={...form,event_date:form.event_date?new Date(form.event_date).toISOString():null}; if(editing)payload.id=form.id; else delete payload.id; try{const r=await fetch('/api/admin/events',{method:editing?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(r.status===401||r.status===403){window.location.replace('/admin/login');return}if(!r.ok)throw new Error(d.error);setMessage(editing?'Event berhasil diperbarui.':'Event berhasil dibuat.');setForm({...EMPTY});setEditing(false);await load()}catch(e){setError(e.message||'Event gagal disimpan.')}finally{setSaving(false)}}
+  async function save(e){e.preventDefault();setSaving(true);setError('');setMessage(''); const payload={...form,event_date:form.event_date?new Date(form.event_date).toISOString():null}; if(editing)payload.id=form.id; else delete payload.id; try{const r=await fetch('/api/admin/events',{method:editing?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(r.status===401||r.status===403){router.replace('/admin/login');return}if(!r.ok)throw new Error(d.error);setMessage(editing?'Event berhasil diperbarui.':'Event berhasil dibuat.');setForm({...EMPTY});setEditing(false);await load()}catch(e){setError(e.message||'Event gagal disimpan.')}finally{setSaving(false)}}
   return <main className="page"><div className="shell"><header className="header"><div><div className="kicker">OXYGEN GEAR / ADMIN / EVENT CONTROL</div><h1>EVENT<br/><em>CONTROL.</em></h1><p>Kendali event lengkap, tanpa JSON dan tanpa menyentuh kode.</p></div><nav><Link href="/admin">ADMIN</Link><Link href="/admin/event">PESERTA</Link><Link href="/event">LIHAT WEBSITE</Link></nav></header>
     {error&&<div className="notice">{error}</div>}{message&&<div className="success">{message}</div>}
     <section className="editor"><div className="editorHead"><div><span>EVENT EDITOR</span><h2>{editing?'EDIT EVENT':'BUAT EVENT BARU'}</h2></div>{editing&&<button type="button" className="ghost" onClick={newEvent}>+ EVENT BARU</button>}</div>
       <form onSubmit={save}><div className="grid">
-        <label className="wide">TIPE<input value={form.type} onChange={e=>set('type',e.target.value)} placeholder="Contoh: PENDAKIAN BERSAMA" required/></label>
+        <label className="wide">TIPE<select value={form.type} onChange={e=>set('type',e.target.value)} required>{EVENT_TYPES.map(type=><option key={type} value={type}>{type}</option>)}</select></label>
         <label className="wide">JUDUL<input value={form.title} onChange={e=>set('title',e.target.value)} placeholder="Contoh: Pendakian Gunung Papandayan" required/></label>
         <label className="wide">SUBTITLE<input value={form.subtitle||''} onChange={e=>set('subtitle',e.target.value)} /></label>
         <label className="wide">DESKRIPSI<textarea value={form.description||''} onChange={e=>set('description',e.target.value)} /></label>
