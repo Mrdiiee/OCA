@@ -26,22 +26,26 @@ export async function GET(request) {
       return NextResponse.json({ error: "Produk gagal dimuat." }, { status: 500 });
     }
 
-    const mapProduct = (row) => ({
-      id: row.id,
-      code: String(row.slug || row.id).slice(0, 10).toUpperCase(),
-      name: row.name,
-      slug: row.slug,
-      category: row.category || "Lainnya",
-      subcategory: row.subcategory || "Outdoor",
-      kind: row.subcategory || "Outdoor",
-      price: Number(row.price || 0),
-      oldPrice: null,
-      badge: Number(row.stock || 0) <= 0 ? "OUT OF STOCK" : "AVAILABLE",
-      image: row.image_url || "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1200&q=85",
-      blurb: row.description || "Perlengkapan outdoor pilihan Oxygen Gear.",
-      description: row.description || "Perlengkapan outdoor pilihan Oxygen Gear.",
-      stock: Number(row.stock || 0),
-    });
+    const mapProduct = (row) => {
+      const image = typeof row.image_url === "string" && row.image_url.trim() ? row.image_url.trim() : null;
+      return {
+        id: row.id,
+        code: String(row.slug || row.id).slice(0, 10).toUpperCase(),
+        name: row.name,
+        slug: row.slug,
+        category: row.category || "Lainnya",
+        subcategory: row.subcategory || "Outdoor",
+        kind: row.subcategory || "Outdoor",
+        price: Number(row.price || 0),
+        oldPrice: null,
+        badge: Number(row.stock || 0) <= 0 ? "OUT OF STOCK" : "AVAILABLE",
+        image,
+        imageUrl: image,
+        blurb: row.description || "Perlengkapan outdoor pilihan Oxygen Gear.",
+        description: row.description || "Perlengkapan outdoor pilihan Oxygen Gear.",
+        stock: Number(row.stock || 0),
+      };
+    };
 
     if (slug) {
       if (!data?.length) return NextResponse.json({ error: "Produk tidak ditemukan." }, { status: 404 });
