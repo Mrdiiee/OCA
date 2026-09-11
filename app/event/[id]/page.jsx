@@ -1,5 +1,3 @@
-"use client";
-
 import { notFound } from "next/navigation";
 
 const EVENTS = {
@@ -69,8 +67,8 @@ export default async function EventDetailPage({ params }) {
         <p style={{ maxWidth: 760, fontSize: "clamp(20px,3vw,30px)", lineHeight: 1.25, letterSpacing: "-.025em", margin: "0 0 18px" }}>{event.subtitle}</p>
         <p style={{ maxWidth: 690, color: "#666", fontSize: 14, lineHeight: 1.8, margin: 0 }}>{event.description}</p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", marginTop: 52, borderTop: "1px solid #111", borderBottom: "1px solid #ddd" }}>
-          {event.meta.map(([label, value]) => <div key={label} style={{ padding: "20px 14px 20px 0", borderRight: "1px solid #ddd", marginRight: 14 }}><div style={{ color: "#777", font: "700 9px monospace", letterSpacing: ".1em", marginBottom: 8 }}>{label}</div><div style={{ fontSize: 12, fontWeight: 800 }}>{value}</div></div>)}
+        <div className="event-detail-meta" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", marginTop: 52, borderTop: "1px solid #111", borderBottom: "1px solid #ddd" }}>
+          {event.meta.map(([label, value], index) => <div key={label} style={{ padding: "20px 14px 20px 0", borderRight: index === event.meta.length - 1 ? 0 : "1px solid #ddd", marginRight: 14 }}><div style={{ color: "#777", font: "700 9px monospace", letterSpacing: ".1em", marginBottom: 8 }}>{label}</div><div style={{ fontSize: 12, fontWeight: 800 }}>{value}</div></div>)}
         </div>
       </section>
 
@@ -84,14 +82,15 @@ export default async function EventDetailPage({ params }) {
       </section>
 
       <section style={{ ...wrap, padding: "70px 0 110px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 30, flexWrap: "wrap" }}>
-        <div><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".12em", marginBottom: 12 }}>NEXT STEP</div><h2 style={{ fontSize: "clamp(28px,4vw,48px)", letterSpacing: "-.045em", margin: 0 }}>{event.status === "TERSEDIA" ? "Siap membangun perjalananmu?" : "Tunggu pembukaan event."}</h2></div>
+        <div><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".12em", marginBottom: 12 }}>NEXT STEP</div><h2 style={{ fontSize: "clamp(28px,4vw,48px)", letterSpacing: "-.045em", margin: 0 }}>{event.status === "TERSEDIA" ? "Siap membangun perjalananmu?" : "Daftarkan minatmu."}</h2></div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {event.href && <a href={event.href} style={button}>LIHAT PRIVATE TRIP →</a>}
+          <a href={`/event/${id}/daftar`} style={button}>{event.status === "TERSEDIA" ? "DAFTAR EVENT →" : "DAFTAR MINAT →"}</a>
+          {event.href && <a href={event.href} style={{ ...button, background: "#fff", color: "#111", border: "1px solid #111" }}>LIHAT PRIVATE TRIP</a>}
           <a href="/kontak" style={{ ...button, background: "#fff", color: "#111", border: "1px solid #111" }}>HUBUNGI OXYGEN GEAR</a>
         </div>
       </section>
 
-      <style>{`@media(max-width:700px){.event-detail-meta{grid-template-columns:1fr 1fr!important}}@media(max-width:640px){main section{ }}`}</style>
+      <style>{`@media(max-width:760px){.event-detail-meta{grid-template-columns:1fr 1fr!important}.event-detail-meta>div{border-right:0!important;margin-right:0!important;border-bottom:1px solid #ddd}.event-detail-meta>div:nth-child(odd){border-right:1px solid #ddd!important;margin-right:14px!important;padding-right:14px!important}}@media(max-width:640px){main section article{grid-template-columns:1fr!important;gap:12px!important}}`}</style>
     </main>
   );
 }
