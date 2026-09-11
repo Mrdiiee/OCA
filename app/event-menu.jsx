@@ -7,65 +7,147 @@ export default function EventMenu() {
     const nav = document.querySelector(".nav-links");
     if (!nav || nav.querySelector(".event-nav-wrap")) return;
 
-    const privateTrip = Array.from(nav.querySelectorAll("a")).find((link) => link.getAttribute("href") === "/private-trip");
+    const privateTrip = Array.from(nav.querySelectorAll("a")).find(
+      (link) => link.getAttribute("href") === "/private-trip"
+    );
     if (!privateTrip) return;
 
-    // Contact is part of the About area, so it should not occupy a primary nav slot.
-    const contact = Array.from(nav.querySelectorAll("a")).find((link) => link.getAttribute("href") === "/kontak");
+    // Contact belongs under About, so it is removed from the primary navbar.
+    const contact = Array.from(nav.querySelectorAll("a")).find(
+      (link) => link.getAttribute("href") === "/kontak"
+    );
     if (contact) contact.remove();
 
     const wrap = document.createElement("div");
     wrap.className = "event-nav-wrap";
-    Object.assign(wrap.style, { position: "relative", height: "100%", display: "flex", alignItems: "center" });
+    Object.assign(wrap.style, {
+      position: "relative",
+      height: "100%",
+      display: "flex",
+      alignItems: "center",
+      alignSelf: "stretch",
+    });
 
     const trigger = document.createElement("button");
     trigger.type = "button";
-    trigger.className = "nav-link event-nav-trigger";
+    // Deliberately NOT using .nav-link here. The global .nav-link::after rules
+    // generate product/about hover panels based on nth-child and caused EVENT
+    // to inherit the PRODUK panel after being wrapped dynamically.
+    trigger.className = "event-nav-trigger";
     trigger.textContent = "EVENT";
     trigger.setAttribute("aria-expanded", "false");
-    trigger.setAttribute("aria-haspopup", "true");
-    Object.assign(trigger.style, { border: "0", background: "transparent", cursor: "pointer", padding: "0", color: "inherit", font: "inherit", height: "100%" });
+    trigger.setAttribute("aria-haspopup", "menu");
+    Object.assign(trigger.style, {
+      border: "0",
+      background: "transparent",
+      cursor: "pointer",
+      padding: "0 2px",
+      color: "#111",
+      font: "inherit",
+      height: "100%",
+      display: "flex",
+      alignItems: "center",
+    });
 
     const menu = document.createElement("div");
     menu.className = "event-nav-menu";
-    Object.assign(menu.style, { display: "none", position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: "310px", padding: "8px", background: "#fff", border: "1px solid #e5e5e5", borderTop: "2px solid #111", boxShadow: "0 20px 60px rgba(0,0,0,.14)", zIndex: "100" });
+    menu.setAttribute("role", "menu");
+    Object.assign(menu.style, {
+      display: "none",
+      position: "absolute",
+      top: "100%",
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "330px",
+      padding: "10px",
+      background: "#fff",
+      border: "1px solid #e5e5e5",
+      borderTop: "2px solid #111",
+      boxShadow: "0 18px 50px rgba(0,0,0,.13)",
+      zIndex: "120",
+    });
+
     menu.innerHTML = `
-      <a href="/event" class="event-nav-item"><strong>SEMUA EVENT</strong><span>Semua agenda Oxygen Gear</span></a>
-      <a href="/event#pendakian-bersama" class="event-nav-item"><strong>PENDAKIAN BERSAMA</strong><span>Agenda pendakian komunitas</span></a>
-      <a href="/event#ekspedisi" class="event-nav-item"><strong>EKSPEDISI</strong><span>Perjalanan dan eksplorasi khusus</span></a>
-      <a href="/private-trip" class="event-nav-item"><strong>PRIVATE TRIP</strong><span>Trip eksklusif sesuai tim Anda</span></a>
+      <a href="/event" class="event-nav-item" role="menuitem"><strong>SEMUA EVENT</strong><span>Lihat seluruh agenda Oxygen Gear</span></a>
+      <a href="/event#pendakian-bersama" class="event-nav-item" role="menuitem"><strong>PENDAKIAN BERSAMA</strong><span>Agenda pendakian komunitas</span></a>
+      <a href="/event#ekspedisi" class="event-nav-item" role="menuitem"><strong>EKSPEDISI</strong><span>Perjalanan dan eksplorasi khusus</span></a>
+      <a href="/private-trip" class="event-nav-item" role="menuitem"><strong>PRIVATE TRIP</strong><span>Trip eksklusif sesuai tim Anda</span></a>
     `;
 
-    menu.querySelectorAll(".event-nav-item").forEach((item) => {
-      Object.assign(item.style, { display: "block", padding: "13px 12px", color: "#222", textDecoration: "none", borderRadius: "2px" });
-      item.addEventListener("mouseenter", () => { item.style.background = "#f5f5f3"; item.style.color = "#111"; });
-      item.addEventListener("mouseleave", () => { item.style.background = "transparent"; item.style.color = "#222"; });
+    menu.querySelectorAll(".event-nav-item").forEach((item, index, items) => {
+      Object.assign(item.style, {
+        display: "block",
+        padding: "14px 13px",
+        color: "#222",
+        textDecoration: "none",
+        borderBottom: index === items.length - 1 ? "0" : "1px solid #efefef",
+      });
+      item.addEventListener("mouseenter", () => {
+        item.style.background = "#f7f7f5";
+        item.style.color = "#e1261c";
+      });
+      item.addEventListener("mouseleave", () => {
+        item.style.background = "transparent";
+        item.style.color = "#222";
+      });
       const strong = item.querySelector("strong");
       const span = item.querySelector("span");
-      if (strong) Object.assign(strong.style, { display: "block", fontSize: "11px", letterSpacing: ".05em" });
-      if (span) Object.assign(span.style, { display: "block", marginTop: "4px", color: "#777", fontSize: "11px", lineHeight: "1.4" });
+      if (strong) {
+        Object.assign(strong.style, {
+          display: "block",
+          fontSize: "11px",
+          letterSpacing: ".06em",
+        });
+      }
+      if (span) {
+        Object.assign(span.style, {
+          display: "block",
+          marginTop: "5px",
+          color: "#777",
+          fontSize: "11px",
+          lineHeight: "1.45",
+        });
+      }
     });
+
+    const setOpen = (open) => {
+      menu.style.display = open ? "block" : "none";
+      trigger.setAttribute("aria-expanded", String(open));
+      trigger.style.color = open ? "#e1261c" : "#111";
+    };
 
     trigger.addEventListener("click", (event) => {
       event.preventDefault();
-      const open = menu.style.display === "block";
-      menu.style.display = open ? "none" : "block";
-      trigger.setAttribute("aria-expanded", String(!open));
+      setOpen(menu.style.display !== "block");
+    });
+
+    trigger.addEventListener("mouseenter", () => {
+      trigger.style.color = "#e1261c";
+    });
+    trigger.addEventListener("mouseleave", () => {
+      if (menu.style.display !== "block") trigger.style.color = "#111";
     });
 
     const close = (event) => {
-      if (!wrap.contains(event.target)) {
-        menu.style.display = "none";
-        trigger.setAttribute("aria-expanded", "false");
+      if (!wrap.contains(event.target)) setOpen(false);
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        trigger.focus();
       }
     };
+
     document.addEventListener("click", close);
+    document.addEventListener("keydown", onKeyDown);
 
     wrap.append(trigger, menu);
     privateTrip.replaceWith(wrap);
 
     return () => {
       document.removeEventListener("click", close);
+      document.removeEventListener("keydown", onKeyDown);
       wrap.remove();
       if (contact && !nav.contains(contact)) nav.append(contact);
     };
