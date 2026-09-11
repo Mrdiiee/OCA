@@ -19,14 +19,46 @@ export default function EventRegistrationPage() {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getUser().then(({ data }) => {
+
+    async function loadSession() {
+      try {
+        // getSession() reads the existing browser session and does not wait on a
+        // network request to /auth/v1/user, so the form can render immediately.
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (sessionError) throw sessionError;
+
+        const sessionUser = data?.session?.user;
+        if (!sessionUser) {
+          router.replace(`/login?next=${encodeURIComponent(`/event/${id}/daftar`)}`);
+          return;
+        }
+
+        setUser(sessionUser);
+        setForm((current) => ({
+          ...current,
+          fullName: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || "",
+        }));
+        setLoading(false);
+      } catch (sessionError) {
+        if (!mounted) return;
+        setError("Sesi login tidak dapat dibaca. Silakan login kembali.");
+        setLoading(false);
+      }
+    }
+
+    loadSession();
+
+    const timeout = window.setTimeout(() => {
       if (!mounted) return;
-      if (!data?.user) { router.replace(`/login?next=${encodeURIComponent(`/event/${id}/daftar`)}`); return; }
-      setUser(data.user);
-      setForm((current) => ({ ...current, fullName: data.user.user_metadata?.full_name || "" }));
       setLoading(false);
-    });
-    return () => { mounted = false; };
+      setError((current) => current || "Sesi login belum terbaca. Silakan login kembali lalu buka halaman pendaftaran.");
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      window.clearTimeout(timeout);
+    };
   }, [id, router]);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
@@ -34,6 +66,10 @@ export default function EventRegistrationPage() {
   async function submit(event) {
     event.preventDefault();
     setError("");
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(`/event/${id}/daftar`)}`);
+      return;
+    }
     if (!form.fullName.trim() || !form.phone.trim() || !form.emergencyContactName.trim() || !form.emergencyContactPhone.trim()) {
       setError("Lengkapi semua data wajib sebelum melanjutkan.");
       return;
@@ -63,6 +99,7 @@ export default function EventRegistrationPage() {
           <div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".12em", marginBottom: 14 }}>DAFTAR / {EVENT_NAMES[id] || "EVENT"}</div>
           <h1 style={{ fontSize: "clamp(42px,7vw,82px)", lineHeight: .9, letterSpacing: "-.06em", margin: "0 0 18px", maxWidth: 760 }}>SIAP<br /><span style={{ color: "#e1261c" }}>BERANGKAT?</span></h1>
           <p style={{ color: "#666", maxWidth: 650, lineHeight: 1.75, fontSize: 14, marginBottom: 42 }}>Isi data peserta dengan benar. Data kontak darurat digunakan untuk kebutuhan keselamatan selama persiapan dan pelaksanaan perjalanan.</p>
+          {error && !user && <div style={{ background: "#fff0ef", border: "1px solid #f0b5b0", color: "#b21d16", padding: 14, fontSize: 12, lineHeight: 1.5, marginBottom: 20 }}>{error} <button type="button" onClick={() => router.replace(`/login?next=${encodeURIComponent(`/event/${id}/daftar`)}`)} style={{ border: 0, background: "transparent", color: "#b21d16", textDecoration: "underline", cursor: "pointer", padding: 0 }}>LOGIN KEMBALI</button></div>}
           <form onSubmit={submit} style={{ background: "#fff", border: "1px solid #ddd", padding: "clamp(24px,5vw,48px)" }}>
             <div style={{ display: "grid", gap: 25 }}>
               <div><label style={labelStyle}>NAMA LENGKAP *</label><input style={inputStyle} value={form.fullName} onChange={(e) => update("fullName", e.target.value)} autoComplete="name" required /></div>
@@ -70,8 +107,8 @@ export default function EventRegistrationPage() {
               <div><label style={labelStyle}>NOMOR HP *</label><input style={inputStyle} value={form.phone} onChange={(e) => update("phone", e.target.value)} autoComplete="tel" inputMode="tel" required /></div>
               <div style={{ paddingTop: 15, borderTop: "1px solid #e5e5e5" }}><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".1em", marginBottom: 20 }}>KONTAK DARURAT</div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}><div><label style={labelStyle}>NAMA *</label><input style={inputStyle} value={form.emergencyContactName} onChange={(e) => update("emergencyContactName", e.target.value)} required /></div><div><label style={labelStyle}>NOMOR HP *</label><input style={inputStyle} value={form.emergencyContactPhone} onChange={(e) => update("emergencyContactPhone", e.target.value)} inputMode="tel" required /></div></div></div>
               <div><label style={labelStyle}>CATATAN TAMBAHAN</label><textarea style={{ ...inputStyle, minHeight: 110, resize: "vertical" }} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Kondisi khusus, kebutuhan perjalanan, atau informasi lain yang perlu kami ketahui." /></div>
-              {error && <div style={{ background: "#fff0ef", border: "1px solid #f0b5b0", color: "#b21d16", padding: 14, fontSize: 12, lineHeight: 1.5 }}>{error}</div>}
-              <button type="submit" disabled={submitting} style={{ border: 0, background: submitting ? "#777" : "#111", color: "#fff", padding: "16px 20px", fontSize: 10, fontWeight: 800, letterSpacing: ".08em", cursor: submitting ? "wait" : "pointer" }}>{submitting ? "MENYIMPAN..." : "KIRIM PENDAFTARAN →"}</button>
+              {error && user && <div style={{ background: "#fff0ef", border: "1px solid #f0b5b0", color: "#b21d16", padding: 14, fontSize: 12, lineHeight: 1.5 }}>{error}</div>}
+              <button type="submit" disabled={submitting || !user} style={{ border: 0, background: submitting || !user ? "#777" : "#111", color: "#fff", padding: "16px 20px", fontSize: 10, fontWeight: 800, letterSpacing: ".08em", cursor: submitting || !user ? "not-allowed" : "pointer" }}>{submitting ? "MENYIMPAN..." : "KIRIM PENDAFTARAN →"}</button>
             </div>
           </form>
         </> : <div style={{ background: "#111", color: "#fff", padding: "clamp(35px,7vw,75px)" }}><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".12em", marginBottom: 15 }}>PENDAFTARAN DITERIMA</div><h1 style={{ fontSize: "clamp(40px,7vw,76px)", lineHeight: .9, letterSpacing: "-.06em", margin: "0 0 20px" }}>SEE YOU<br />OUT THERE.</h1><p style={{ color: "#bbb", maxWidth: 600, lineHeight: 1.75, fontSize: 14 }}>Data pendaftaran kamu sudah tersimpan. Status awal: <strong style={{ color: "#fff" }}>PENDING</strong>. Tim Oxygen Gear akan menghubungi kamu ketika detail event dan proses berikutnya sudah siap.</p><div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 30 }}><a href="/member" style={{ background: "#fff", color: "#111", padding: "15px 18px", textDecoration: "none", fontSize: 10, fontWeight: 800, letterSpacing: ".07em" }}>KE MEMBER AREA →</a><a href="/event" style={{ border: "1px solid #555", color: "#fff", padding: "15px 18px", textDecoration: "none", fontSize: 10, fontWeight: 800, letterSpacing: ".07em" }}>LIHAT EVENT</a></div></div>}
