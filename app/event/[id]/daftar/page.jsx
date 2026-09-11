@@ -60,15 +60,15 @@ export default function EventRegistrationPage() {
       const response = await fetch("/api/event-registration", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventSlug: id, fullName: form.fullName.trim(), phone: form.phone.trim(), emergencyContactName: form.emergencyContactName.trim(), emergencyContactPhone: form.emergencyContactPhone.trim(), notes: form.notes.trim() }) });
       const data = await response.json();
       if (!response.ok) { setError(data.error || "Pendaftaran gagal. Silakan periksa kembali data kamu."); return; }
-      setSuccess({ status: data.status || 'pending', message: data.message || '' });
+      setSuccess({ status: data.status || "pending", message: data.message || "" });
     } catch { setError("Koneksi bermasalah. Silakan coba lagi."); }
     finally { setSubmitting(false); }
   }
 
   const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #d8d8d5", background: "#fff", padding: "14px 15px", fontSize: 13, outline: "none" };
   const labelStyle = { display: "block", fontSize: 10, fontWeight: 800, letterSpacing: ".09em", marginBottom: 8 };
-  const statusLabel = success?.status === 'waitlist' ? 'WAITLIST' : success?.status === 'confirmed' ? 'CONFIRMED' : 'PENDING';
-  const statusMessage = success?.message || (success?.status === 'waitlist' ? 'Kuota utama sedang penuh. Kamu masuk daftar tunggu dan akan dihubungi tim Oxygen Gear jika slot tersedia.' : 'Data pendaftaran kamu sudah tersimpan. Tim Oxygen Gear akan menghubungi kamu ketika detail event dan proses berikutnya sudah siap.');
+  const statusLabel = success?.status === "waitlist" ? "WAITLIST" : success?.status === "confirmed" ? "CONFIRMED" : "PENDING";
+  const statusMessage = success?.message || (success?.status === "waitlist" ? "Kuota utama sedang penuh. Kamu masuk daftar tunggu dan akan dihubungi tim Oxygen Gear jika slot tersedia." : "Data pendaftaran kamu sudah tersimpan. Tim Oxygen Gear akan menghubungi kamu ketika detail event dan proses berikutnya sudah siap.");
 
   if (loading) return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "Arial,Helvetica,sans-serif" }}>Memuat pendaftaran...</main>;
 
@@ -92,6 +92,16 @@ export default function EventRegistrationPage() {
           </div></form>
         </> : <div style={{ background: "#111", color: "#fff", padding: "clamp(35px,7vw,75px)" }}><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".12em", marginBottom: 15 }}>PENDAFTARAN DITERIMA</div><h1 style={{ fontSize: "clamp(40px,7vw,76px)", lineHeight: .9, letterSpacing: "-.06em", margin: "0 0 20px" }}>SEE YOU<br />OUT THERE.</h1><p style={{ color: "#bbb", maxWidth: 600, lineHeight: 1.75, fontSize: 14 }}>{statusMessage} Status: <strong style={{ color: "#fff" }}>{statusLabel}</strong>.</p><div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 30 }}><a href="/member" style={{ background: "#fff", color: "#111", padding: "15px 18px", textDecoration: "none", fontSize: 10, fontWeight: 800, letterSpacing: ".07em" }}>KE MEMBER AREA →</a><a href="/event" style={{ border: "1px solid #555", color: "#fff", padding: "15px 18px", textDecoration: "none", fontSize: 10, fontWeight: 800, letterSpacing: ".07em" }}>LIHAT EVENT</a></div></div>}
       </section>
+
+      {success && <div role="dialog" aria-modal="true" aria-labelledby="registration-success-title" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "grid", placeItems: "center", padding: 20 }}>
+        <div style={{ width: "min(560px,100%)", background: "#fff", color: "#111", border: "1px solid #222", padding: "clamp(28px,6vw,52px)", boxShadow: "0 24px 80px rgba(0,0,0,.3)" }}>
+          <div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".14em", marginBottom: 18 }}>OXYGEN GEAR · REGISTRATION</div>
+          <h2 id="registration-success-title" style={{ margin: 0, fontSize: "clamp(28px,5vw,48px)", lineHeight: .98, letterSpacing: "-.045em", textTransform: "uppercase" }}>PENDAFTARAN KAMU SUDAH KAMI PROSES YA OXYGUYS</h2>
+          <p style={{ margin: "22px 0 0", color: "#555", fontSize: 14, lineHeight: 1.7 }}>Silahkan Tunggu Pemberitahuan Dari Admin Kami</p>
+          <div style={{ marginTop: 28, paddingTop: 18, borderTop: "1px solid #ddd", color: "#777", fontSize: 10, lineHeight: 1.6, letterSpacing: ".06em" }}>STATUS: <strong style={{ color: "#111" }}>{statusLabel}</strong></div>
+          <button type="button" onClick={() => router.push("/event")} style={{ width: "100%", marginTop: 24, border: 0, background: "#111", color: "#fff", padding: "15px 18px", fontSize: 10, fontWeight: 800, letterSpacing: ".09em", cursor: "pointer" }}>KEMBALI KE EVENT</button>
+        </div>
+      </div>}
     </main>
   );
 }
