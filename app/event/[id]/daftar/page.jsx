@@ -15,7 +15,7 @@ export default function EventRegistrationPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -43,36 +43,32 @@ export default function EventRegistrationPage() {
   }, [id, router, supabase]);
 
   const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
-
   function validate() {
-    const name = form.fullName.trim();
-    const phone = form.phone.trim();
-    const emergencyName = form.emergencyContactName.trim();
-    const emergencyPhone = form.emergencyContactPhone.trim();
+    const name = form.fullName.trim(), phone = form.phone.trim(), emergencyName = form.emergencyContactName.trim(), emergencyPhone = form.emergencyContactPhone.trim();
     if (name.length < 2) return "Nama lengkap minimal 2 karakter.";
     if (phone.length < 8) return "Nomor HP peserta minimal 8 karakter.";
     if (emergencyName.length < 2) return "Nama kontak darurat minimal 2 karakter.";
     if (emergencyPhone.length < 8) return "Nomor HP kontak darurat minimal 8 karakter.";
     return "";
   }
-
   async function submit(event) {
     event.preventDefault(); setError("");
     if (!user) { router.replace(`/login?next=${encodeURIComponent(`/event/${id}/daftar`)}`); return; }
-    const validationError = validate();
-    if (validationError) { setError(validationError); return; }
+    const validationError = validate(); if (validationError) { setError(validationError); return; }
     setSubmitting(true);
     try {
       const response = await fetch("/api/event-registration", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventSlug: id, fullName: form.fullName.trim(), phone: form.phone.trim(), emergencyContactName: form.emergencyContactName.trim(), emergencyContactPhone: form.emergencyContactPhone.trim(), notes: form.notes.trim() }) });
       const data = await response.json();
       if (!response.ok) { setError(data.error || "Pendaftaran gagal. Silakan periksa kembali data kamu."); return; }
-      setSuccess(true);
+      setSuccess({ status: data.status || 'pending', message: data.message || '' });
     } catch { setError("Koneksi bermasalah. Silakan coba lagi."); }
     finally { setSubmitting(false); }
   }
 
   const inputStyle = { width: "100%", boxSizing: "border-box", border: "1px solid #d8d8d5", background: "#fff", padding: "14px 15px", fontSize: 13, outline: "none" };
   const labelStyle = { display: "block", fontSize: 10, fontWeight: 800, letterSpacing: ".09em", marginBottom: 8 };
+  const statusLabel = success?.status === 'waitlist' ? 'WAITLIST' : success?.status === 'confirmed' ? 'CONFIRMED' : 'PENDING';
+  const statusMessage = success?.message || (success?.status === 'waitlist' ? 'Kuota utama sedang penuh. Kamu masuk daftar tunggu dan akan dihubungi tim Oxygen Gear jika slot tersedia.' : 'Data pendaftaran kamu sudah tersimpan. Tim Oxygen Gear akan menghubungi kamu ketika detail event dan proses berikutnya sudah siap.');
 
   if (loading) return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "Arial,Helvetica,sans-serif" }}>Memuat pendaftaran...</main>;
 
@@ -86,17 +82,15 @@ export default function EventRegistrationPage() {
           <h1 style={{ fontSize: "clamp(42px,7vw,82px)", lineHeight: .9, letterSpacing: "-.06em", margin: "0 0 18px", maxWidth: 760 }}>SIAP<br /><span style={{ color: "#e1261c" }}>BERANGKAT?</span></h1>
           <p style={{ color: "#666", maxWidth: 650, lineHeight: 1.75, fontSize: 14, marginBottom: 42 }}>Isi data peserta dengan benar. Data kontak darurat digunakan untuk kebutuhan keselamatan selama persiapan dan pelaksanaan perjalanan.</p>
           {error && <div style={{ background: "#fff0ef", border: "1px solid #f0b5b0", color: "#b21d16", padding: 14, fontSize: 12, lineHeight: 1.5, marginBottom: 20 }}>{error}</div>}
-          <form onSubmit={submit} noValidate style={{ background: "#fff", border: "1px solid #ddd", padding: "clamp(24px,5vw,48px)" }}>
-            <div style={{ display: "grid", gap: 25 }}>
-              <div><label style={labelStyle}>NAMA LENGKAP *</label><input style={inputStyle} value={form.fullName} onChange={e => update("fullName", e.target.value)} autoComplete="name" required /></div>
-              <div><label style={labelStyle}>EMAIL</label><input style={{ ...inputStyle, background: "#f3f3f1", color: "#666" }} value={user?.email || ""} readOnly /></div>
-              <div><label style={labelStyle}>NOMOR HP *</label><input style={inputStyle} value={form.phone} onChange={e => update("phone", e.target.value)} autoComplete="tel" inputMode="tel" placeholder="Contoh: 081234567890" required /></div>
-              <div style={{ paddingTop: 15, borderTop: "1px solid #e5e5e5" }}><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".1em", marginBottom: 20 }}>KONTAK DARURAT</div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}><div><label style={labelStyle}>NAMA *</label><input style={inputStyle} value={form.emergencyContactName} onChange={e => update("emergencyContactName", e.target.value)} autoComplete="name" placeholder="Nama keluarga / kontak" required /></div><div><label style={labelStyle}>NOMOR HP *</label><input style={inputStyle} value={form.emergencyContactPhone} onChange={e => update("emergencyContactPhone", e.target.value)} inputMode="tel" placeholder="Contoh: 081234567890" required /></div></div></div>
-              <div><label style={labelStyle}>CATATAN TAMBAHAN</label><textarea style={{ ...inputStyle, minHeight: 110, resize: "vertical" }} value={form.notes} onChange={e => update("notes", e.target.value)} placeholder="Kondisi khusus, kebutuhan perjalanan, atau informasi lain yang perlu kami ketahui." /></div>
-              <button type="submit" disabled={submitting || !user} style={{ border: 0, background: submitting || !user ? "#777" : "#111", color: "#fff", padding: "16px 20px", fontSize: 10, fontWeight: 800, letterSpacing: ".08em", cursor: submitting || !user ? "not-allowed" : "pointer" }}>{submitting ? "MENYIMPAN..." : "KIRIM PENDAFTARAN →"}</button>
-            </div>
-          </form>
-        </> : <div style={{ background: "#111", color: "#fff", padding: "clamp(35px,7vw,75px)" }}><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".12em", marginBottom: 15 }}>PENDAFTARAN DITERIMA</div><h1 style={{ fontSize: "clamp(40px,7vw,76px)", lineHeight: .9, letterSpacing: "-.06em", margin: "0 0 20px" }}>SEE YOU<br />OUT THERE.</h1><p style={{ color: "#bbb", maxWidth: 600, lineHeight: 1.75, fontSize: 14 }}>Data pendaftaran kamu sudah tersimpan. Status awal: <strong style={{ color: "#fff" }}>PENDING</strong>. Tim Oxygen Gear akan menghubungi kamu ketika detail event dan proses berikutnya sudah siap.</p><div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 30 }}><a href="/member" style={{ background: "#fff", color: "#111", padding: "15px 18px", textDecoration: "none", fontSize: 10, fontWeight: 800, letterSpacing: ".07em" }}>KE MEMBER AREA →</a><a href="/event" style={{ border: "1px solid #555", color: "#fff", padding: "15px 18px", textDecoration: "none", fontSize: 10, fontWeight: 800, letterSpacing: ".07em" }}>LIHAT EVENT</a></div></div>}
+          <form onSubmit={submit} noValidate style={{ background: "#fff", border: "1px solid #ddd", padding: "clamp(24px,5vw,48px)" }}><div style={{ display: "grid", gap: 25 }}>
+            <div><label style={labelStyle}>NAMA LENGKAP *</label><input style={inputStyle} value={form.fullName} onChange={e => update("fullName", e.target.value)} autoComplete="name" required /></div>
+            <div><label style={labelStyle}>EMAIL</label><input style={{ ...inputStyle, background: "#f3f3f1", color: "#666" }} value={user?.email || ""} readOnly /></div>
+            <div><label style={labelStyle}>NOMOR HP *</label><input style={inputStyle} value={form.phone} onChange={e => update("phone", e.target.value)} autoComplete="tel" inputMode="tel" placeholder="Contoh: 081234567890" required /></div>
+            <div style={{ paddingTop: 15, borderTop: "1px solid #e5e5e5" }}><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".1em", marginBottom: 20 }}>KONTAK DARURAT</div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}><div><label style={labelStyle}>NAMA *</label><input style={inputStyle} value={form.emergencyContactName} onChange={e => update("emergencyContactName", e.target.value)} autoComplete="name" placeholder="Nama keluarga / kontak" required /></div><div><label style={labelStyle}>NOMOR HP *</label><input style={inputStyle} value={form.emergencyContactPhone} onChange={e => update("emergencyContactPhone", e.target.value)} inputMode="tel" placeholder="Contoh: 081234567890" required /></div></div></div>
+            <div><label style={labelStyle}>CATATAN TAMBAHAN</label><textarea style={{ ...inputStyle, minHeight: 110, resize: "vertical" }} value={form.notes} onChange={e => update("notes", e.target.value)} placeholder="Kondisi khusus, kebutuhan perjalanan, atau informasi lain yang perlu kami ketahui." /></div>
+            <button type="submit" disabled={submitting || !user} style={{ border: 0, background: submitting || !user ? "#777" : "#111", color: "#fff", padding: "16px 20px", fontSize: 10, fontWeight: 800, letterSpacing: ".08em", cursor: submitting || !user ? "not-allowed" : "pointer" }}>{submitting ? "MENYIMPAN..." : "KIRIM PENDAFTARAN →"}</button>
+          </div></form>
+        </> : <div style={{ background: "#111", color: "#fff", padding: "clamp(35px,7vw,75px)" }}><div style={{ color: "#e1261c", font: "700 10px monospace", letterSpacing: ".12em", marginBottom: 15 }}>PENDAFTARAN DITERIMA</div><h1 style={{ fontSize: "clamp(40px,7vw,76px)", lineHeight: .9, letterSpacing: "-.06em", margin: "0 0 20px" }}>SEE YOU<br />OUT THERE.</h1><p style={{ color: "#bbb", maxWidth: 600, lineHeight: 1.75, fontSize: 14 }}>{statusMessage} Status: <strong style={{ color: "#fff" }}>{statusLabel}</strong>.</p><div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 30 }}><a href="/member" style={{ background: "#fff", color: "#111", padding: "15px 18px", textDecoration: "none", fontSize: 10, fontWeight: 800, letterSpacing: ".07em" }}>KE MEMBER AREA →</a><a href="/event" style={{ border: "1px solid #555", color: "#fff", padding: "15px 18px", textDecoration: "none", fontSize: 10, fontWeight: 800, letterSpacing: ".07em" }}>LIHAT EVENT</a></div></div>}
       </section>
     </main>
   );
