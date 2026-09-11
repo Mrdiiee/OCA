@@ -22,7 +22,7 @@ export async function POST(request) {
     const { data: event, error: eventError } = await admin.from("events").select("id,slug,title,status,registration_enabled,published,quota").eq("slug", eventSlug).maybeSingle();
     if (eventError) return NextResponse.json({ error: "Event tidak dapat diverifikasi." }, { status: 500 });
     if (!event || !event.published) return NextResponse.json({ error: "Event tidak tersedia." }, { status: 404 });
-    if (!event.registration_enabled || event.status !== "TERSEDIA") return NextResponse.json({ error: "Pendaftaran event belum dibuka." }, { status: 400 });
+    if (!event.registration_enabled || ["DITUTUP", "SELESAI"].includes(event.status)) return NextResponse.json({ error: "Pendaftaran event belum dibuka." }, { status: 400 });
     let registrationStatus = "pending";
     if (event.quota) { const { count, error } = await admin.from("event_registrations").select("id", { count: "exact", head: true }).eq("event_slug", eventSlug).in("status", ["pending", "confirmed"]); if (error) return NextResponse.json({ error: "Kuota event tidak dapat diverifikasi." }, { status: 500 }); if ((count || 0) >= event.quota) registrationStatus = "waitlist"; }
     const user = authData.user; const { data: existing, error: existingError } = await admin.from("event_registrations").select("id,status").eq("event_slug", eventSlug).eq("user_id", user.id).maybeSingle();
