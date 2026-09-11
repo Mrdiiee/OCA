@@ -71,6 +71,53 @@ function createDropdown(triggerText, links) {
   return { wrap, trigger, menu, cleanup: () => { clearTimeout(closeTimer); trigger.removeEventListener("mouseenter", open); trigger.removeEventListener("mouseleave", close); menu.removeEventListener("mouseenter", open); menu.removeEventListener("mouseleave", close); } };
 }
 
+function polishMobileMenu() {
+  const menu = document.querySelector(".more-menu");
+  if (!menu) return () => {};
+
+  const style = document.createElement("style");
+  style.dataset.oxygenMobileMenu = "true";
+  style.textContent = `
+    .og-menu-trigger{position:relative!important;width:46px!important;height:46px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;border:1px solid #e5e5e5!important;border-radius:50%!important;background:#fff!important;color:#111!important;box-shadow:0 8px 24px rgba(0,0,0,.08)!important;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease!important;}
+    .og-menu-trigger:hover{border-color:#e1261c!important;color:#e1261c!important;transform:translateY(-1px)!important;box-shadow:0 10px 28px rgba(225,38,28,.14)!important;}
+    .og-menu-trigger:focus-visible{outline:2px solid #e1261c!important;outline-offset:3px!important;}
+    .og-menu-icon{width:18px;height:14px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none;}
+    .og-menu-icon span{display:block;width:100%;height:2px;background:currentColor;border-radius:999px;transition:transform .2s ease,opacity .2s ease,width .2s ease;}
+    .og-menu-trigger[aria-expanded="true"] .og-menu-icon span:nth-child(1){transform:translateY(6px) rotate(45deg);}
+    .og-menu-trigger[aria-expanded="true"] .og-menu-icon span:nth-child(2){opacity:0;width:0;}
+    .og-menu-trigger[aria-expanded="true"] .og-menu-icon span:nth-child(3){transform:translateY(-6px) rotate(-45deg);}
+    @media(max-width:980px){
+      .shell .more-menu{position:fixed!important;top:72px!important;right:14px!important;left:auto!important;width:min(330px,calc(100vw - 28px))!important;max-height:calc(100vh - 90px)!important;overflow:auto!important;padding:10px!important;border:1px solid #e5e5e5!important;border-top:3px solid #e1261c!important;border-radius:18px!important;background:rgba(255,255,255,.98)!important;box-shadow:0 24px 70px rgba(0,0,0,.18)!important;backdrop-filter:blur(18px)!important;}
+      .shell .more-menu .more-item{border-radius:11px!important;margin:3px 0!important;padding:13px 14px!important;}
+      .shell .more-menu .more-item:hover{background:#f7f7f5!important;}
+      .og-menu-trigger{display:inline-flex!important;}
+    }
+  `;
+  document.head.appendChild(style);
+
+  const parent = menu.parentElement;
+  let trigger = parent?.querySelector("button");
+  if (!trigger) trigger = menu.previousElementSibling?.tagName === "BUTTON" ? menu.previousElementSibling : null;
+  if (!trigger) trigger = menu.parentElement?.querySelector("[role='button']");
+  if (!trigger) return () => style.remove();
+
+  trigger.classList.add("og-menu-trigger");
+  trigger.setAttribute("aria-label", "Buka menu");
+  trigger.innerHTML = `<span class="og-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>`;
+
+  const sync = () => {
+    const open = menu.classList.contains("open") || menu.getAttribute("aria-hidden") === "false" || getComputedStyle(menu).display !== "none";
+    trigger.setAttribute("aria-expanded", String(open));
+  };
+  trigger.addEventListener("click", () => setTimeout(sync, 0));
+
+  return () => {
+    trigger.classList.remove("og-menu-trigger");
+    trigger.removeAttribute("aria-label");
+    style.remove();
+  };
+}
+
 export default function MemberMenu() {
   useEffect(() => {
     const nav = document.querySelector(".nav-links");
@@ -125,10 +172,13 @@ export default function MemberMenu() {
     };
     document.addEventListener("keydown", onKeyDown);
 
+    const mobileMenuCleanup = polishMobileMenu();
+
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       cleanups.forEach((cleanup) => cleanup());
       replaced.forEach((wrap) => wrap.remove());
+      mobileMenuCleanup();
     };
   }, []);
 
