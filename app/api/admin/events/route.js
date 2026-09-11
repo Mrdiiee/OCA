@@ -1,0 +1,83 @@
+import { NextResponse } from 'next/server';
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '../../../../lib/supabase-server';
+
+const STATUSES = ['TERSEDIA', 'SEGERA HADIR', 'DITUTUP', 'SELESAI'];
+
+async function getAdmin() {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) return { error: 'Silakan login terlebih dahulu.', status: 401 };
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { error: 'Konfigurasi server belum lengkap.', status: 500 };
+  const admin = createSupabaseAdmin(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+  const { data: row, error: adminError } = await admin.from('admin_users').select('user_id').eq('user_id', data.user.id).maybeSingle();
+  if (adminError) return { error: 'Hak akses admin belum dikonfigurasi.', status: 500 };
+  if (!row) return { error: 'Akses admin ditolak.', status: 403 };
+  return { admin };
+}
+
+function clean(value, max = 1000) { return String(value ?? '').trim().slice(0, max); }
+function parseJsonArray(value, fallback = []) {
+  if (Array.isArray(value)) return value.slice(0, 20).map(item => Array.isArray(item) ? item.slice(0, 2).map(v => clean(v, 500)) : clean(item, 500));
+  if (typeof value === 'string' && value.trim()) {
+    try { return parseJsonArray(JSON.parse(value), fallback); } catch { return fallback; }
+  }
+  return fallback;
+}
+function normalize(body) {
+  const status = clean(body?.status, 30).toUpperCase();
+  return {
+    slug: clean(body?.slug, 80).toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
+    type: clean(body?.type, 80), title: clean(body?.title, 160), subtitle: clean(body?.subtitle, 300), description: clean(body?.description, 1200),
+    status: STATUSES.includes(status) ? status : 'SEGERA HADIR', meta: parseJsonArray(body?.meta), sections: parseJsonArray(body?.sections), href: clean(body?.href, 200) || null,
+    event_date: body?.event_date || null, location: clean(body?.location, 200) || null, price: body?.price === '' || body?.price == null ? null : Number(body.price), quota: body?.quota === '' || body?.quota == null ? null : Number(body.quota),
+    registration_enabled: Boolean(body?.registration_enabled), published: body?.published !== false, sort_order: Number.isFinite(Number(body?.sort_order)) ? Number(body.sort_order) : 0,
+  };
+}
+
+export async function GET() {
+  const c = await getAdmin(); if (c.error) return NextResponse.json({ error: c.error }, { status: c.status });
+  const { data, error } = await c.admin.from('events').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+  if (error) { console.error(error); return NextResponse.json({ error: 'Event gagal dimuat.' }, { status: 500 }); }
+  return NextResponse.json({ events: data || [] }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function POST(request) {
+  const c = await getAdmin(); if (c.error) return NextResponse.json({ error: c.error }, { status: c.status });
+  try {
+    const payload = normalize(await request.json());
+    if (!payload.slug || !payload.title || !payload.type) return NextResponse.json({ error: 'Slug, tipe, dan judul event wajib diisi.' }, { status: 400 });
+    if (payload.price != null && (!Number.isFinite(payload.price) || payload.price < 0)) return NextResponse.json({ error: 'Harga event tidak valid.' }, { status: 400 });
+    if (payload.quota != null && (!Number.isInteger(payload.quota) || payload.quota < 1)) return NextResponse.json({ error: 'Kuota event tidak valid.' }, { status: 400 });
+    const { data, error } = await c.admin.from('events').insert(payload).select('*').single();
+    if (error) { console.error(error); return NextResponse.json({ error: error.code === '23505' ? 'Slug event sudah digunakan.' : 'Event gagal dibuat.' }, { status: 500 }); }
+    return NextResponse.json({ event: data }, { status: 201 });
+  } catch { return NextResponse.json({ error: 'Permintaan tidak valid.' }, { status: 400 }); }
+}
+
+export async function PATCH(request) {
+  const c = await getAdmin(); if (c.error) return NextResponse.json({ error: c.error }, { status: c.status });
+  try {
+    const body = await request.json(); const id = clean(body?.id, 80); if (!id) return NextResponse.json({ error: 'ID event wajib diisi.' }, { status: 400 });
+    const payload = normalize(body); delete payload.slug;
+    if (!payload.title || !payload.type) return NextResponse.json({ error: 'Tipe dan judul event wajib diisi.' }, { status: 400 });
+    const { data, error } = await c.admin.from('events').update(payload).eq('id', id).select('*').single();
+    if (error) { console.error(error); return NextResponse.json({ error: 'Event gagal diperbarui.' }, { status: 500 }); }
+    return NextResponse.json({ event: data });
+  } catch { return NextResponse.json({ error: 'Permintaan tidak valid.' }, { status: 400 }); }
+}
+
+export async function DELETE(request) {
+  const c = await getAdmin(); if (c.error) return NextResponse.json({ error: c.error }, { status: c.status });
+  try {
+    const body = await request.json(); const id = clean(body?.id, 80); if (!id) return NextResponse.json({ error: 'ID event wajib diisi.' }, { status: 400 });
+    const { count, error: countError } = await c.admin.from('event_registrations').select('id', { count: 'exact', head: true }).eq('event_slug', body?.slug || '');
+    if (countError) return NextResponse.json({ error: 'Peserta event gagal diverifikasi.' }, { status: 500 });
+    if ((count || 0) > 0) return NextResponse.json({ error: 'Event memiliki peserta. Jangan hapus; gunakan DITUTUP atau nonaktifkan publikasi.' }, { status: 409 });
+    const { error } = await c.admin.from('events').delete().eq('id', id);
+    if (error) { console.error(error); return NextResponse.json({ error: 'Event gagal dihapus.' }, { status: 500 }); }
+    return NextResponse.json({ ok: true });
+  } catch { return NextResponse.json({ error: 'Permintaan tidak valid.' }, { status: 400 }); }
+}
