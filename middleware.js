@@ -12,7 +12,15 @@ export async function middleware(request) {
   const isPublicStorefront =
     pathname === '/' ||
     pathname === '/produk' ||
-    pathname.startsWith('/produk/');
+    pathname.startsWith('/produk/') ||
+    pathname === '/private-trip' ||
+    pathname.startsWith('/private-trip/') ||
+    pathname === '/tentang' ||
+    pathname.startsWith('/tentang/') ||
+    pathname === '/kontak' ||
+    pathname.startsWith('/kontak/') ||
+    pathname === '/status-pengiriman' ||
+    pathname.startsWith('/status-pengiriman/');
   const isPublicAuthPage = isLoginPage || isAdminLoginPage;
 
   // Prevent the login page from accepting protocol-relative or external
@@ -33,8 +41,7 @@ export async function middleware(request) {
   // Product catalog data is public and is required by the public storefront.
   if (isPublicProductsApi) return response;
 
-  // The storefront is public. Customer account/order pages and admin pages
-  // remain protected below.
+  // Public marketing/storefront pages must be reachable without authentication.
   if (isPublicStorefront) return response;
 
   // Support both the legacy Supabase anon-key names and the newer
