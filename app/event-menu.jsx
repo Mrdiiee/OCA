@@ -12,7 +12,6 @@ export default function EventMenu() {
     );
     if (!privateTrip) return;
 
-    // Contact belongs under About, so it is removed from the primary navbar.
     const contact = Array.from(nav.querySelectorAll("a")).find(
       (link) => link.getAttribute("href") === "/kontak"
     );
@@ -30,9 +29,6 @@ export default function EventMenu() {
 
     const trigger = document.createElement("button");
     trigger.type = "button";
-    // Deliberately NOT using .nav-link here. The global .nav-link::after rules
-    // generate product/about hover panels based on nth-child and caused EVENT
-    // to inherit the PRODUK panel after being wrapped dynamically.
     trigger.className = "event-nav-trigger";
     trigger.textContent = "EVENT";
     trigger.setAttribute("aria-expanded", "false");
@@ -62,7 +58,7 @@ export default function EventMenu() {
       padding: "10px",
       background: "#fff",
       border: "1px solid #e5e5e5",
-      borderTop: "2px solid #111",
+      borderTop: "2px solid #e1261c",
       boxShadow: "0 18px 50px rgba(0,0,0,.13)",
       zIndex: "120",
     });
@@ -92,40 +88,34 @@ export default function EventMenu() {
       });
       const strong = item.querySelector("strong");
       const span = item.querySelector("span");
-      if (strong) {
-        Object.assign(strong.style, {
-          display: "block",
-          fontSize: "11px",
-          letterSpacing: ".06em",
-        });
-      }
-      if (span) {
-        Object.assign(span.style, {
-          display: "block",
-          marginTop: "5px",
-          color: "#777",
-          fontSize: "11px",
-          lineHeight: "1.45",
-        });
-      }
+      if (strong) Object.assign(strong.style, { display: "block", fontSize: "11px", letterSpacing: ".06em" });
+      if (span) Object.assign(span.style, { display: "block", marginTop: "5px", color: "#777", fontSize: "11px", lineHeight: "1.45" });
     });
 
+    let closeTimer;
     const setOpen = (open) => {
+      clearTimeout(closeTimer);
       menu.style.display = open ? "block" : "none";
       trigger.setAttribute("aria-expanded", String(open));
       trigger.style.color = open ? "#e1261c" : "#111";
     };
 
+    // EVENT behaves like PRODUK: moving the mouse over the toolbar item
+    // immediately opens its own event categories.
+    const openOnHover = () => setOpen(true);
+    const closeOnLeave = () => {
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(() => setOpen(false), 100);
+    };
+
+    trigger.addEventListener("mouseenter", openOnHover);
+    trigger.addEventListener("mouseleave", closeOnLeave);
+    menu.addEventListener("mouseenter", openOnHover);
+    menu.addEventListener("mouseleave", closeOnLeave);
+
     trigger.addEventListener("click", (event) => {
       event.preventDefault();
       setOpen(menu.style.display !== "block");
-    });
-
-    trigger.addEventListener("mouseenter", () => {
-      trigger.style.color = "#e1261c";
-    });
-    trigger.addEventListener("mouseleave", () => {
-      if (menu.style.display !== "block") trigger.style.color = "#111";
     });
 
     const close = (event) => {
@@ -146,8 +136,13 @@ export default function EventMenu() {
     privateTrip.replaceWith(wrap);
 
     return () => {
+      clearTimeout(closeTimer);
       document.removeEventListener("click", close);
       document.removeEventListener("keydown", onKeyDown);
+      trigger.removeEventListener("mouseenter", openOnHover);
+      trigger.removeEventListener("mouseleave", closeOnLeave);
+      menu.removeEventListener("mouseenter", openOnHover);
+      menu.removeEventListener("mouseleave", closeOnLeave);
       wrap.remove();
       if (contact && !nav.contains(contact)) nav.append(contact);
     };
