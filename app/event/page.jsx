@@ -1,60 +1,11 @@
 "use client";
 
 const EVENTS = [
-  {
-    id: "pendakian-bersama",
-    type: "PENDAKIAN BERSAMA",
-    title: "Pendakian Bersama",
-    copy: "Agenda pendakian terbuka untuk bertemu, belajar, dan berjalan bersama komunitas Oxygen Gear.",
-    status: "SEGERA HADIR",
-  },
-  {
-    id: "ekspedisi",
-    type: "EKSPEDISI",
-    title: "Ekspedisi",
-    copy: "Perjalanan eksplorasi dengan persiapan dan karakter rute yang lebih khusus.",
-    status: "SEGERA HADIR",
-  },
-  {
-    id: "private-trip",
-    type: "PRIVATE TRIP",
-    title: "Private Trip Papandayan",
-    copy: "Trip eksklusif kelompok kecil dengan rute yang disesuaikan dengan kemampuan tim.",
-    status: "TERSEDIA",
-    href: "/private-trip",
-  },
+  { id:"pendakian-bersama", type:"PENDAKIAN BERSAMA", title:"Pendakian Bersama", copy:"Agenda pendakian terbuka untuk bertemu, belajar, dan berjalan bersama komunitas Oxygen Gear.", status:"SEGERA HADIR" },
+  { id:"ekspedisi", type:"EKSPEDISI", title:"Ekspedisi", copy:"Perjalanan eksplorasi dengan persiapan dan karakter rute yang lebih khusus.", status:"SEGERA HADIR" },
+  { id:"private-trip", type:"PRIVATE TRIP", title:"Private Trip Papandayan", copy:"Trip eksklusif kelompok kecil dengan rute yang disesuaikan dengan kemampuan tim.", status:"TERSEDIA", href:"/private-trip" },
 ];
 
-export default function EventPage() {
-  return (
-    <main style={{ minHeight: "100vh", background: "#0b0b0a", color: "#f7f6f3", fontFamily: "Arial,Helvetica,sans-serif" }}>
-      <div style={{ background: "#e1261c", padding: "9px 16px", textAlign: "center", fontSize: 11, fontWeight: 700, letterSpacing: ".08em" }}>
-        OXYGEN GEAR · EVENT
-      </div>
-      <header style={{ borderBottom: "1px solid #302e29", padding: "22px 24px" }}>
-        <a href="/" style={{ color: "inherit", textDecoration: "none", fontWeight: 900, letterSpacing: ".05em" }}>← OXYGEN GEAR</a>
-      </header>
-      <section style={{ width: "min(1100px,calc(100% - 48px))", margin: "0 auto", padding: "80px 0" }}>
-        <p style={{ color: "#e1261c", fontFamily: "monospace", fontSize: 11, letterSpacing: ".12em" }}>01 / EVENT</p>
-        <h1 style={{ fontSize: "clamp(48px,8vw,96px)", lineHeight: .9, letterSpacing: "-.06em", margin: "0 0 24px" }}>GO FURTHER<br /><span style={{ color: "#e1261c" }}>TOGETHER.</span></h1>
-        <p style={{ maxWidth: 620, color: "#8b887f", lineHeight: 1.7 }}>Semua kegiatan Oxygen Gear dikumpulkan di sini: pendakian bersama, ekspedisi, dan private trip.</p>
-        <div style={{ display: "grid", gap: 14, marginTop: 55 }}>
-          {EVENTS.map((event) => (
-            <article id={event.id} key={event.id} style={{ border: "1px solid #302e29", padding: 28, background: "#151412", display: "grid", gridTemplateColumns: "1fr auto", gap: 24, alignItems: "end" }}>
-              <div>
-                <div style={{ color: "#8b887f", fontFamily: "monospace", fontSize: 10, letterSpacing: ".1em" }}>{event.type}</div>
-                <h2 style={{ margin: "8px 0", fontSize: 28 }}>{event.title}</h2>
-                <p style={{ margin: 0, maxWidth: 650, color: "#8b887f", fontSize: 13, lineHeight: 1.6 }}>{event.copy}</p>
-              </div>
-              {event.href ? (
-                <a href={event.href} style={{ display: "inline-flex", padding: "12px 16px", background: "#f7f6f3", color: "#0b0b0a", fontWeight: 800, fontSize: 11, textDecoration: "none" }}>LIHAT PRIVATE TRIP →</a>
-              ) : (
-                <span style={{ color: "#8b887f", fontFamily: "monospace", fontSize: 10 }}>{event.status}</span>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
-    </main>
-  );
-}
+export default function EventPage(){
+  return <main className="events"><style>{`*{box-sizing:border-box}.events{min-height:100vh;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}.topbar{background:#111;color:#fff;padding:9px 16px;text-align:center;font-size:10px;font-weight:800;letter-spacing:.1em}.header{border-bottom:1px solid #e5e5e5}.header-inner,.content{width:min(1120px,calc(100% - 48px));margin:0 auto}.header-inner{min-height:76px;display:flex;align-items:center}.brand{color:#111;text-decoration:none;font-size:12px;font-weight:900;letter-spacing:.06em}.content{padding:92px 0 110px}.eyebrow{color:#e1261c;font:700 10px monospace;letter-spacing:.12em;margin:0 0 16px}.title{font-size:clamp(58px,9vw,120px);line-height:.84;letter-spacing:-.065em;margin:0 0 25px}.title span{color:#e1261c}.lead{max-width:650px;color:#666;font-size:15px;line-height:1.75;margin:0}.list{display:grid;gap:1px;background:#e5e5e5;border:1px solid #e5e5e5;margin-top:60px}.event{background:#fff;padding:30px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;transition:background .18s}.event:hover{background:#f7f7f5}.type{color:#e1261c;font:700 10px monospace;letter-spacing:.1em}.event h2{font-size:clamp(22px,3vw,34px);letter-spacing:-.035em;margin:9px 0}.event p{max-width:680px;color:#666;font-size:13px;line-height:1.65;margin:0}.status{color:#777;font:700 10px monospace;letter-spacing:.08em}.event-link{display:inline-flex;padding:13px 16px;background:#111;color:#fff;text-decoration:none;font-size:10px;font-weight:800;letter-spacing:.06em;transition:.18s}.event-link:hover{background:#e1261c}@media(max-width:650px){.header-inner,.content{width:min(100% - 40px,1120px)}.content{padding:62px 0 80px}.event{grid-template-columns:1fr;padding:24px}.event-link{width:100%;justify-content:center}}`}</style><div className="topbar">OXYGEN GEAR · EVENT</div><header className="header"><div className="header-inner"><a className="brand" href="/">← OXYGEN GEAR</a></div></header><section className="content"><p className="eyebrow">01 / EVENT</p><h1 className="title">GO FURTHER<br/><span>TOGETHER.</span></h1><p className="lead">Semua kegiatan Oxygen Gear dikumpulkan di sini: pendakian bersama, ekspedisi, dan private trip.</p><div className="list">{EVENTS.map((event)=><article className="event" id={event.id} key={event.id}><div><div className="type">{event.type}</div><h2>{event.title}</h2><p>{event.copy}</p></div>{event.href?<a className="event-link" href={event.href}>LIHAT PRIVATE TRIP →</a>:<span className="status">{event.status}</span>}</article>)}</div></section></main>
+}` }
