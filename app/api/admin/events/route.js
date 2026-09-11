@@ -75,3 +75,29 @@ export async function PATCH(request) {
     return NextResponse.json({ event: data });
   } catch { return NextResponse.json({ error: 'Permintaan tidak valid.' }, { status: 400 }); }
 }
+
+export async function DELETE(request) {
+  const c = await getAdmin(); if (c.error) return NextResponse.json({ error: c.error }, { status: c.status });
+  try {
+    const body = await request.json();
+    const id = clean(body?.id, 80);
+    if (!id) return NextResponse.json({ error: 'ID event wajib diisi.' }, { status: 400 });
+
+    const { data: event, error: eventError } = await c.admin.from('events').select('id, slug, title, cover_image_url').eq('id', id).maybeSingle();
+    if (eventError) { console.error(eventError); return NextResponse.json({ error: 'Event gagal diperiksa.' }, { status: 500 }); }
+    if (!event) return NextResponse.json({ error: 'Event tidak ditemukan.' }, { status: 404 });
+
+    const { count, error: registrationError } = await c.admin
+      .from('event_registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_slug', event.slug);
+    if (registrationError) { console.error(registrationError); return NextResponse.json({ error: 'Peserta event gagal diperiksa.' }, { status: 500 }); }
+    if ((count || 0) > 0) {
+      return NextResponse.json({ error: `Event tidak bisa dihapus karena sudah memiliki ${count} pendaftar. Tutup atau unpublish event terlebih dahulu.` }, { status: 409 });
+    }
+
+    const { error: deleteError } = await c.admin.from('events').delete().eq('id', id);
+    if (deleteError) { console.error(deleteError); return NextResponse.json({ error: 'Event gagal dihapus.' }, { status: 500 }); }
+    return NextResponse.json({ success: true, deleted_event: event.title });
+  } catch { return NextResponse.json({ error: 'Permintaan tidak valid.' }, { status: 400 }); }
+}
