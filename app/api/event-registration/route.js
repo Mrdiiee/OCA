@@ -23,12 +23,13 @@ export async function POST(request) {
     if (eventError) return NextResponse.json({ error: "Event tidak dapat diverifikasi." }, { status: 500 });
     if (!event || !event.published) return NextResponse.json({ error: "Event tidak tersedia." }, { status: 404 });
     if (!event.registration_enabled || event.status !== "TERSEDIA") return NextResponse.json({ error: "Pendaftaran event belum dibuka." }, { status: 400 });
-    if (event.quota) { const { count, error } = await admin.from("event_registrations").select("id", { count: "exact", head: true }).eq("event_slug", eventSlug).in("status", ["pending", "confirmed", "waitlist"]); if (error) return NextResponse.json({ error: "Kuota event tidak dapat diverifikasi." }, { status: 500 }); if ((count || 0) >= event.quota) return NextResponse.json({ error: "Kuota event sudah penuh." }, { status: 409 }); }
+    let registrationStatus = "pending";
+    if (event.quota) { const { count, error } = await admin.from("event_registrations").select("id", { count: "exact", head: true }).eq("event_slug", eventSlug).in("status", ["pending", "confirmed"]); if (error) return NextResponse.json({ error: "Kuota event tidak dapat diverifikasi." }, { status: 500 }); if ((count || 0) >= event.quota) registrationStatus = "waitlist"; }
     const user = authData.user; const { data: existing, error: existingError } = await admin.from("event_registrations").select("id,status").eq("event_slug", eventSlug).eq("user_id", user.id).maybeSingle();
     if (existingError) return NextResponse.json({ error: "Pendaftaran tidak dapat diverifikasi." }, { status: 500 });
     if (existing) return NextResponse.json({ error: existing.status === "cancelled" ? "Pendaftaran sebelumnya dibatalkan. Hubungi Oxygen Gear untuk mendaftar kembali." : "Kamu sudah terdaftar pada event ini." }, { status: 409 });
-    const { data: created, error: insertError } = await admin.from("event_registrations").insert({ event_slug: eventSlug, user_id: user.id, full_name: fullName, email: user.email || "", phone, emergency_contact_name: emergencyContactName, emergency_contact_phone: emergencyContactPhone, notes: notes || null, status: "pending" }).select("id,event_slug,status,created_at").single();
+    const { data: created, error: insertError } = await admin.from("event_registrations").insert({ event_slug: eventSlug, user_id: user.id, full_name: fullName, email: user.email || "", phone, emergency_contact_name: emergencyContactName, emergency_contact_phone: emergencyContactPhone, notes: notes || null, status: registrationStatus }).select("id,event_slug,status,created_at").single();
     if (insertError) { if (insertError.code === "23505") return NextResponse.json({ error: "Kamu sudah terdaftar pada event ini." }, { status: 409 }); console.error(insertError); return NextResponse.json({ error: "Pendaftaran gagal disimpan. Silakan coba lagi." }, { status: 500 }); }
-    return NextResponse.json({ registration: created });
+    return NextResponse.json({ registration: created, message: registrationStatus === "waitlist" ? "Kuota penuh. Pendaftaran kamu masuk waitlist." : "Pendaftaran diterima." });
   } catch (error) { console.error("Event registration error:", error); return NextResponse.json({ error: "Terjadi kesalahan server saat mendaftarkan peserta." }, { status: 500 }); }
 }
