@@ -22,15 +22,23 @@ function clean(value, max = 1000) { return String(value ?? '').trim().slice(0, m
 function slugify(value) { return clean(value, 160).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80); }
 function normalize(body) {
   const status = clean(body?.status, 30).toUpperCase();
+  const price = body?.price === '' || body?.price == null ? null : Number(body.price);
+  const quota = body?.quota === '' || body?.quota == null ? null : Number(body.quota);
   return {
     type: clean(body?.type, 80), title: clean(body?.title, 160), subtitle: clean(body?.subtitle, 300), description: clean(body?.description, 1200),
+    cover_image_url: clean(body?.cover_image_url, 1000) || null,
     status: STATUSES.includes(status) ? status : 'SEGERA HADIR',
     event_date: body?.event_date || null, location: clean(body?.location, 200) || null,
-    price: body?.price === '' || body?.price == null ? null : Number(body.price),
-    quota: body?.quota === '' || body?.quota == null ? null : Number(body.quota),
+    price, quota,
     registration_enabled: Boolean(body?.registration_enabled), published: body?.published !== false,
     sort_order: Number.isFinite(Number(body?.sort_order)) ? Number(body.sort_order) : 0,
   };
+}
+function validate(payload) {
+  if (!payload.title || !payload.type) return 'Tipe dan judul event wajib diisi.';
+  if (payload.price != null && (!Number.isFinite(payload.price) || payload.price < 0)) return 'Harga event tidak valid.';
+  if (payload.quota != null && (!Number.isInteger(payload.quota) || payload.quota < 1)) return 'Kuota event tidak valid.';
+  return null;
 }
 
 export async function GET() {
@@ -46,9 +54,9 @@ export async function POST(request) {
     const body = await request.json();
     const payload = normalize(body);
     payload.slug = slugify(payload.title);
-    if (!payload.slug || !payload.title || !payload.type) return NextResponse.json({ error: 'Judul dan tipe event wajib diisi.' }, { status: 400 });
-    if (payload.price != null && (!Number.isFinite(payload.price) || payload.price < 0)) return NextResponse.json({ error: 'Harga event tidak valid.' }, { status: 400 });
-    if (payload.quota != null && (!Number.isInteger(payload.quota) || payload.quota < 1)) return NextResponse.json({ error: 'Kuota event tidak valid.' }, { status: 400 });
+    const validation = validate(payload);
+    if (!payload.slug) return NextResponse.json({ error: 'Judul event tidak valid.' }, { status: 400 });
+    if (validation) return NextResponse.json({ error: validation }, { status: 400 });
     const { data, error } = await c.admin.from('events').insert(payload).select('*').single();
     if (error) { console.error(error); return NextResponse.json({ error: error.code === '23505' ? 'Judul event menghasilkan slug yang sudah digunakan. Gunakan judul berbeda.' : 'Event gagal dibuat.' }, { status: 500 }); }
     return NextResponse.json({ event: data }, { status: 201 });
@@ -58,11 +66,10 @@ export async function POST(request) {
 export async function PATCH(request) {
   const c = await getAdmin(); if (c.error) return NextResponse.json({ error: c.error }, { status: c.status });
   try {
-    const body = await request.json(); const id = clean(body?.id, 80); if (!id) return NextResponse.json({ error: 'ID event wajib diisi.' }, { status: 400 });
-    const payload = normalize(body);
-    if (!payload.title || !payload.type) return NextResponse.json({ error: 'Tipe dan judul event wajib diisi.' }, { status: 400 });
-    if (payload.price != null && (!Number.isFinite(payload.price) || payload.price < 0)) return NextResponse.json({ error: 'Harga event tidak valid.' }, { status: 400 });
-    if (payload.quota != null && (!Number.isInteger(payload.quota) || payload.quota < 1)) return NextResponse.json({ error: 'Kuota event tidak valid.' }, { status: 400 });
+    const body = await request.json(); const id = clean(body?.id, 80);
+    if (!id) return NextResponse.json({ error: 'ID event wajib diisi.' }, { status: 400 });
+    const payload = normalize(body); const validation = validate(payload);
+    if (validation) return NextResponse.json({ error: validation }, { status: 400 });
     const { data, error } = await c.admin.from('events').update(payload).eq('id', id).select('*').single();
     if (error) { console.error(error); return NextResponse.json({ error: 'Event gagal diperbarui.' }, { status: 500 }); }
     return NextResponse.json({ event: data });
