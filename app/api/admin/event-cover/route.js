@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
-import { createServerSupabaseClient } from '../../../../../lib/supabase-server';
+import { createServerSupabaseClient } from '../../../../lib/supabase-server';
 
 const MAX_SIZE = 5 * 1024 * 1024;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
