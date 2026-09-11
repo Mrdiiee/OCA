@@ -6,9 +6,10 @@ export async function middleware(request) {
   const pathname = request.nextUrl.pathname;
   const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
   const isAdminLoginPage = pathname === '/admin/login';
-  const isLoginPage = pathname.startsWith('/login');
+  const isLoginPage = pathname === '/login';
   const isMidtransWebhook = pathname === '/api/midtrans/notification';
   const isPublicProductsApi = pathname === '/api/products';
+  const isEventRoute = pathname === '/event' || pathname.startsWith('/event/');
   const isPublicStorefront =
     pathname === '/' ||
     pathname === '/produk' ||
@@ -20,11 +21,11 @@ export async function middleware(request) {
     pathname === '/kontak' ||
     pathname.startsWith('/kontak/') ||
     pathname === '/status-pengiriman' ||
-    pathname.startsWith('/status-pengiriman/');
+    pathname.startsWith('/status-pengiriman/') ||
+    pathname === '/event' ||
+    pathname.startsWith('/event/');
   const isPublicAuthPage = isLoginPage || isAdminLoginPage;
 
-  // Prevent the login page from accepting protocol-relative or external
-  // redirect targets through the `next` query parameter.
   if (isLoginPage && request.nextUrl.searchParams.has('next')) {
     const next = request.nextUrl.searchParams.get('next') || '';
     if (!next.startsWith('/') || next.startsWith('//') || next.includes('\\')) {
@@ -34,18 +35,8 @@ export async function middleware(request) {
     }
   }
 
-  // Midtrans server notifications are machine-to-machine requests and do not
-  // carry a Supabase browser session. They must reach the webhook directly.
-  if (isMidtransWebhook) return response;
+  if (isMidtransWebhook || isPublicProductsApi || isPublicStorefront) return response;
 
-  // Product catalog data is public and is required by the public storefront.
-  if (isPublicProductsApi) return response;
-
-  // Public marketing/storefront pages must be reachable without authentication.
-  if (isPublicStorefront) return response;
-
-  // Support both the legacy Supabase anon-key names and the newer
-  // Vercel/Supabase integration variable names.
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseKey =
@@ -53,8 +44,6 @@ export async function middleware(request) {
     process.env.SUPABASE_PUBLISHABLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Never let missing Supabase configuration turn every request into a 500.
-  // Both login entry points stay reachable so the deployment can be diagnosed.
   if (!supabaseUrl || !supabaseKey) {
     if (!isPublicAuthPage) {
       const url = request.nextUrl.clone();
@@ -84,8 +73,6 @@ export async function middleware(request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Admin login is intentionally public. The login page itself checks the
-  // authenticated user against admin_users before allowing dashboard access.
   if (isAdminLoginPage) return response;
 
   if (!user && !isLoginPage) {
@@ -97,8 +84,14 @@ export async function middleware(request) {
 
   if (user && isLoginPage) {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
-    url.search = '';
+    const next = request.nextUrl.searchParams.get('next') || '/';
+    if (next.startsWith('/') && !next.startsWith('//') && !next.includes('\\')) {
+      url.pathname = next.split('?')[0] || '/';
+      url.search = next.includes('?') ? `?${next.split('?').slice(1).join('?')}` : '';
+    } else {
+      url.pathname = '/';
+      url.search = '';
+    }
     return NextResponse.redirect(url);
   }
 
