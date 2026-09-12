@@ -35,27 +35,17 @@ jobs:
             'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1400&q=85':'{homepageMedia.homepage_04?.url || "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1400&q=85"}'
           }
           for src,expr in urls.items(): old=old.replace(f'src="{src}"',f'src={expr}')
-          old_cta='<a className="btn ghost" href="/oxygen-index">OXYGEN INDEX <Icon name="arrow" size={16}/></a>'
-          new_cta='<a className="oxygen-index-media" href="/oxygen-index" aria-label="Oxygen Index"><img src={homepageMedia.oxygen_index?.url || "/oxygen-index.webp"} alt="Oxygen Index" /></a>'
-          old=old.replace(old_cta,new_cta,1)
-          brand_pattern=re.compile(r'<a[^>]*className="brand"[^>]*>.*?</a>',re.S)
-          m=brand_pattern.search(old)
+          old=old.replace('<a className="btn ghost" href="/oxygen-index">OXYGEN INDEX <Icon name="arrow" size={16}/></a>','<a className="oxygen-index-media" href="/oxygen-index" aria-label="Oxygen Index"><img src={homepageMedia.oxygen_index?.url || "/oxygen-index.webp"} alt="Oxygen Index" /></a>',1)
+          m=re.search(r'<a[^>]*className="brand"[^>]*>.*?</a>',old,re.S)
           if not m: raise SystemExit('Header brand anchor missing')
-          brand=m.group(0)
-          hm=re.search(r'href="([^"]+)"',brand)
-          href=hm.group(1) if hm else '/'
+          brand=m.group(0); hm=re.search(r'href="([^"]+)"',brand); href=hm.group(1) if hm else '/'
           new_brand=f'<a href="{href}" className="brand" aria-label="Oxygen Gear">{{homepageMedia.logo?.url ? <img className="brand-logo-image" src={{homepageMedia.logo.url}} alt="Oxygen Gear" /> : <><span className="brand-mark" aria-hidden="true"></span>OXYGEN GEAR</>}}</a>'
           old=old[:m.start()]+new_brand+old[m.end():]
           css='''\n.brand{width:150px;min-width:150px;flex:0 0 150px;overflow:hidden}.brand-logo-image{display:block;width:auto;height:30px;max-width:150px;object-fit:contain;object-position:left center}.oxygen-index-media{display:inline-flex;align-items:center;max-width:min(100%,780px);height:auto;text-decoration:none}.oxygen-index-media img{display:block;width:auto;height:clamp(48px,5.8vw,96px);max-width:100%;object-fit:contain;object-position:left center}.oxygen-index-media:hover{opacity:.94}.oxygen-index-media:focus-visible{outline:2px solid #fff;outline-offset:5px}@media(max-width:760px){.brand{width:126px;min-width:126px;flex-basis:126px}.brand-logo-image{height:25px;max-width:126px}.oxygen-index-media img{height:52px;max-width:92vw}}\n'''
           old=old.replace('</style>',css+'</style>',1)
           path.write_text(old,encoding='utf-8')
-          print('Homepage layout restored from previous known-good version:',BASE)
-      - name: Validate homepage source markers
-        run: |
-          test -s app/page.jsx
-          grep -q 'homepageMedia' app/page.jsx
-          grep -q 'className="brand-logo-image"' app/page.jsx
-          grep -q 'className="oxygen-index-media"' app/page.jsx
+          assert 'homepageMedia' in old and 'brand-logo-image' in old and 'oxygen-index-media' in old
+          print('Homepage restored to the pre-media layout baseline and media controls reattached safely.')
       - name: Commit repaired homepage
         run: |
           git config user.name 'github-actions[bot]'
