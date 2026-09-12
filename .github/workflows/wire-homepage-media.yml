@@ -1,0 +1,95 @@
+name: Wire Homepage Media Controls
+
+on:
+  push:
+    paths:
+      - '.github/workflows/wire-homepage-media.yml'
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wire homepage and admin
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          page = Path('app/page.jsx')
+          s = page.read_text()
+
+          if 'const [homepageMedia, setHomepageMedia]' not in s:
+              marker = 'const [products, setProducts] = useState(PRODUCTS); const [productsLoading, setProductsLoading] = useState(true);'
+              replacement = marker + ' const [homepageMedia, setHomepageMedia] = useState({});'
+              if marker not in s: raise SystemExit('homepage state marker not found')
+              s = s.replace(marker, replacement, 1)
+
+          if 'fetch("/api/homepage-media"' not in s:
+              marker = '  const total = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.qty, 0), [cart]);'
+              replacement = '''  useEffect(() => {\n    let active = true;\n    async function loadHomepageMedia() {\n      try {\n        const response = await fetch("/api/homepage-media", { cache: "no-store" });\n        const data = await response.json();\n        if (!active) return;\n        if (response.ok && Array.isArray(data.media)) setHomepageMedia(Object.fromEntries(data.media.map((item) => [item.key, item])));\n      } catch {}\n    }\n    loadHomepageMedia();\n    return () => { active = false; };\n  }, []);\n\n''' + marker
+              if marker not in s: raise SystemExit('homepage total marker not found')
+              s = s.replace(marker, replacement, 1)
+
+          if 'className="oxygen-index-media"' not in s:
+              pattern = r'<a className="oxygen-index-logo" href="/oxygen-index" aria-label="Oxygen Index">.*?</a>'
+              repl = '<a className="oxygen-index-media" href="/oxygen-index" aria-label="Oxygen Index"><img src={homepageMedia.oxygen_index?.url || "/oxygen-index.webp"} alt="Oxygen Index" /></a>'
+              s, n = re.subn(pattern, repl, s, count=1, flags=re.S)
+              if n != 1: raise SystemExit('oxygen index anchor not found')
+
+          # Replace only literal homepage Unsplash images, never product data above the component.
+          marker = '  return <main className="shell">'
+          head, tail = s.split(marker, 1)
+          count = 0
+          def image_repl(m):
+              nonlocal count
+              count += 1
+              key = 'hero' if count == 1 else f'homepage_{count-1:02d}'
+              return '{homepageMedia.' + key + '?.url || "' + m.group(1) + '"}'
+          tail = re.sub(r'src="(https://images\.unsplash\.com/[^"}]+)"', image_repl, tail)
+          s = head + marker + tail
+
+          # Give the header logo the same admin-controlled media source while keeping the existing text fallback.
+          brand_pattern = r'<a([^>]*className="brand"[^>]*)>.*?</a>'
+          brand_repl = r'<a\1 aria-label="Oxygen Gear">{homepageMedia.logo?.url ? <img className="brand-logo-image" src={homepageMedia.logo.url} alt="Oxygen Gear" /> : <><span className="brand-mark"></span><span>OXYGEN GEAR</span></>}</a>'
+          s, n = re.subn(brand_pattern, brand_repl, s, count=1, flags=re.S)
+          if n != 1:
+              print('brand anchor not found; keeping existing brand markup')
+
+          css_marker = '.oxygen-index-logo:hover{transform:translateY(-1px);opacity:.96}'
+          css_add = '.brand-logo-image{display:block;width:auto;height:34px;max-width:220px;object-fit:contain}.oxygen-index-media{display:inline-flex;align-items:center;max-width:min(100%,780px);text-decoration:none}.oxygen-index-media img{display:block;width:auto;height:clamp(54px,7vw,112px);max-width:100%;object-fit:contain;object-position:left center}.oxygen-index-media:hover{opacity:.94}.oxygen-index-media:focus-visible{outline:2px solid #fff;outline-offset:5px}'
+          if css_add not in s:
+              if css_marker in s:
+                  s = s.replace(css_marker, css_add + css_marker, 1)
+              else:
+                  s = s.replace('</style>', css_add + '</style>', 1)
+
+          page.write_text(s)
+
+          admin = Path('app/admin/page.jsx')
+          a = admin.read_text()
+          if 'href="/admin/homepage"' not in a:
+              marker = '<Link href="/admin/produk" style={styles.quickItem}><span style={styles.quickNumber}>03</span><strong style={styles.quickTitle}>KELOLA PRODUK</strong><small style={styles.quickText}>Produk, harga, stok, gambar, dan status katalog.</small></Link>'
+              addition = marker + '\n      <Link href="/admin/homepage" style={styles.quickItem}><span style={styles.quickNumber}>04</span><strong style={styles.quickTitle}>KONTROL HOMEPAGE</strong><small style={styles.quickText}>Logo, hero, Oxygen Index, dan seluruh visual non-produk halaman utama.</small></Link>'
+              if marker not in a: raise SystemExit('admin quick product marker not found')
+              a = a.replace(marker, addition, 1)
+              # Keep the remaining existing quick numbers valid without changing their behavior.
+              a = a.replace('<span style={styles.quickNumber}>04</span><strong style={styles.quickTitle}>KELOLA PENGIRIMAN</strong>', '<span style={styles.quickNumber}>05</span><strong style={styles.quickTitle}>KELOLA PENGIRIMAN</strong>', 1)
+              a = a.replace('<span style={styles.quickNumber}>05</span><strong style={styles.quickTitle}>KELOLA MEMBER</strong>', '<span style={styles.quickNumber}>06</span><strong style={styles.quickTitle}>KELOLA MEMBER</strong>', 1)
+              a = a.replace('gridTemplateColumns:"repeat(5,1fr)"', 'gridTemplateColumns:"repeat(3,1fr)"')
+              a = a.replace('grid-template-columns:repeat(5,1fr)', 'grid-template-columns:repeat(3,1fr)')
+              admin.write_text(a)
+          PY
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx app/admin/page.jsx
+          git diff --cached --quiet && echo 'No changes needed.' || git commit -m 'Connect homepage visuals to media control'
+          git push
+
+          git rm .github/workflows/wire-homepage-media.yml
+          git commit -m 'Remove temporary homepage media workflow'
+          git push
