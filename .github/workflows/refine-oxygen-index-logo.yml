@@ -1,0 +1,44 @@
+name: Refine Oxygen Index Logo
+
+on:
+  push:
+    paths:
+      - '.github/workflows/refine-oxygen-index-logo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refine logo markup and styling
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('app/page.jsx')
+          s = p.read_text()
+          old = '<span className="oxygen-word">OXYGEN</span><span className="index-word">INDEX</span>'
+          new = '<span className="oxygen-word">OXYGEN</span><span className="index-word"><span>INDEX</span></span>'
+          if old in s:
+              s = s.replace(old, new, 1)
+          start = s.index('.oxygen-index-logo{')
+          end = s.index('.ticker{', start)
+          css = '''.oxygen-index-logo{--logo-w:clamp(300px,28vw,620px);--logo-h:clamp(54px,5.1vw,108px);--oxy-size:clamp(42px,4.15vw,92px);--idx-size:clamp(39px,3.8vw,84px);--idx-w:clamp(150px,13vw,285px);--idx-h:clamp(46px,4.2vw,94px);position:relative;width:var(--logo-w);height:var(--logo-h);display:block;overflow:visible;background:transparent;color:#050505;border:0;padding:0;text-decoration:none;line-height:1;white-space:nowrap;isolation:isolate;transition:transform .2s,opacity .2s}.oxygen-word{position:absolute;left:0;top:50%;z-index:1;display:block;margin:0;color:#050505;font-family:Arial Black,Arial,Helvetica,sans-serif;font-size:var(--oxy-size);font-weight:900;letter-spacing:-.11em;line-height:.82;transform:translateY(-50%) scaleX(.91);transform-origin:left center}.index-word{position:absolute;z-index:2;right:0;top:50%;width:var(--idx-w);height:var(--idx-h);display:flex;align-items:center;justify-content:center;margin:0;padding:0 3% 1px 7%;background:#ed1c24;color:#fff;font-family:Arial Black,Arial,Helvetica,sans-serif;font-size:var(--idx-size);font-weight:900;letter-spacing:-.075em;line-height:.82;transform:translateY(-50%) skewX(-13deg);clip-path:polygon(10% 0,100% 0,90% 100%,0 100%);transform-origin:center}.index-word span{display:block;transform:skewX(13deg)}.oxygen-index-logo:hover{transform:translateY(-1px);opacity:.96}.oxygen-index-logo:active{transform:none}.oxygen-index-logo:focus-visible{outline:2px solid #111;outline-offset:4px}'''
+          s = s[:start] + css + s[end:]
+          # Remove the old mobile size override so mobile and desktop share the exact same logo geometry.
+          import re
+          s = re.sub(r'@media\(max-width:650px\)\{\.oxygen-index-logo\{--logo-w:190px;--logo-h:50px;--oxy-size:29px;--idx-size:27px;--idx-w:92px;--idx-h:38px\}\}', '', s)
+          p.write_text(s)
+      - name: Commit and clean workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx
+          git commit -m 'Refine Oxygen Index logo proportions' || true
+          git push
+          rm -f .github/workflows/refine-oxygen-index-logo.yml
+          git add .github/workflows/refine-oxygen-index-logo.yml
+          git commit -m 'Clean up temporary logo workflow' || true
+          git push
