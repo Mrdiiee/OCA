@@ -1,0 +1,38 @@
+name: Fix Oxygen Index Image
+on:
+  push:
+    paths:
+      - .github/workflows/fix-oxygen-index-image-trigger.txt
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch homepage image
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/page.jsx')
+          s=p.read_text()
+          old='<a className="oxygen-index-image" href="/oxygen-index" aria-label="Oxygen Index"><img src="/oxygen-index.svg" alt="Oxygen Index" /></a>'
+          new='<a className="oxygen-index-image" href="/oxygen-index" aria-label="Oxygen Index"><img src="/oxygen-index.webp" alt="Oxygen Index" draggable="false" /></a>'
+          if old in s:
+              s=s.replace(old,new,1)
+          elif '/oxygen-index.svg' in s:
+              s=s.replace('/oxygen-index.svg','/oxygen-index.webp',1)
+              s=s.replace('<img src="/oxygen-index.webp" alt="Oxygen Index" />','<img src="/oxygen-index.webp" alt="Oxygen Index" draggable="false" />',1)
+          else:
+              raise SystemExit('Oxygen Index image target not found')
+          s=s.replace('.oxygen-index-image{width:180px;height:46px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #fff;padding:6px 10px;overflow:hidden;transition:transform .2s,opacity .2s}', '.oxygen-index-image{width:180px;height:46px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;padding:0;overflow:hidden;transition:transform .2s,opacity .2s;-webkit-user-drag:none;user-select:none}')
+          s=s.replace('.oxygen-index-image img{display:block;width:100%;height:100%;object-fit:contain}', '.oxygen-index-image img{display:block;width:100%;height:auto;max-height:100%;object-fit:contain;-webkit-user-drag:none;user-select:none;pointer-events:none}')
+          s=s.replace('.oxygen-index-image:hover{transform:translateY(-1px);opacity:.9}', '.oxygen-index-image:hover{transform:translateY(-1px);opacity:.9}.oxygen-index-image:active{transform:none}')
+          p.write_text(s)
+          PY
+          rm -f .github/workflows/fix-oxygen-index-image-trigger.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx .github/workflows/fix-oxygen-index-image-trigger.txt
+          git commit -m 'Use uploaded Oxygen Index image and disable drag' || exit 0
+          git push
