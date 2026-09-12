@@ -29,7 +29,7 @@ jobs:
               print("Landing page already has a closing brace.")
           PY
 
-      - name: Fix desktop account menu states
+      - name: Fix Informasi Akun hover and active states
         shell: bash
         run: |
           python - <<'PY'
@@ -37,25 +37,35 @@ jobs:
           import re
           path = Path("app/member-menu.jsx")
           text = path.read_text()
-          desktop = re.search(r'@media\\(min-width:981px\\)\\{.*?(?=@media\\(max-width:|$)', text, re.S)
-          if not desktop:
-              raise SystemExit("Desktop media block not found; refusing unsafe edit.")
-          block = desktop.group(0)
-          account = re.search(r'\\.shell \\.more-menu \\.mobile-account-link\\{.*?\\}', block, re.S)
-          if not account:
-              raise SystemExit("Desktop account rule not found; refusing unsafe edit.")
-          clean_account = '.shell .more-menu .mobile-account-link{order:-1!important;display:block!important;width:100%!important;min-height:50px!important;margin:0 0 8px!important;padding:15px 14px!important;border-radius:12px!important;background:#111!important;color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:12px!important;font-weight:800!important;line-height:1.2!important;letter-spacing:.08em!important;text-align:left!important;box-sizing:border-box!important;visibility:visible!important;opacity:1!important;text-shadow:none!important}'
-          block = block[:account.start()] + clean_account + block[account.end():]
-          block = re.sub(r'\\.shell \\.more-menu \\.mobile-account-link:(?:hover|active|focus|focus-visible)\\{.*?\\}', '', block, flags=re.S)
-          marker = '.shell .more-menu .more-item:hover{background:#f6f6f4!important;color:#e1261c!important}'
-          states = marker + '.shell .more-menu .mobile-account-link:hover{background:#111!important;color:#fff!important;-webkit-text-fill-color:#fff!important;visibility:visible!important;opacity:1!important}.shell .more-menu .mobile-account-link:focus,.shell .more-menu .mobile-account-link:focus-visible{background:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;visibility:visible!important;opacity:1!important;outline:2px solid #111!important;outline-offset:-2px!important}.shell .more-menu .mobile-account-link:active{background:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;visibility:visible!important;opacity:1!important}'
-          if marker in block:
-              block = block.replace(marker, states, 1)
-          else:
+
+          account = re.compile(r'\.shell \.more-menu \.mobile-account-link\{.*?\}', re.S)
+          match = account.search(text)
+          if not match:
+              raise SystemExit("Informasi Akun CSS rule not found; refusing unsafe edit.")
+
+          desired = '.shell .more-menu .mobile-account-link{order:-1!important;display:block!important;width:100%!important;min-height:50px!important;margin:0 0 8px!important;padding:15px 14px!important;border-radius:12px!important;background:#111!important;color:#fff!important;font-size:12px!important;font-weight:800!important;line-height:1.2!important;letter-spacing:.08em!important;text-align:left!important;box-sizing:border-box!important}'
+          text = text[:match.start()] + desired + text[match.end():]
+
+          hover = '.shell .more-menu .mobile-account-link:hover,.shell .more-menu .mobile-account-link:focus,.shell .more-menu .mobile-account-link:active{background:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;visibility:visible!important;opacity:1!important}'
+          text = text.replace(hover, '')
+
+          desktop_marker = '@media(min-width:981px){'
+          pos = text.find(desktop_marker)
+          if pos < 0:
+              raise SystemExit("Desktop menu media block not found; refusing unsafe edit.")
+          end = text.find('\n}', pos)
+          if end < 0:
+              raise SystemExit("Desktop menu block boundary not found; refusing unsafe edit.")
+
+          generic_hover = '.shell .more-menu .more-item:hover{background:#f6f6f4!important;color:#e1261c!important}'
+          insert_at = text.find(generic_hover, pos)
+          if insert_at < 0:
               raise SystemExit("Desktop generic hover rule not found; refusing unsafe edit.")
-          text = text[:desktop.start()] + block + text[desktop.end():]
+          insert_at += len(generic_hover)
+          text = text[:insert_at] + '\n' + hover + text[insert_at:]
+
           path.write_text(text)
-          print("Desktop Informasi Akun: black/white normally, stays black on hover, becomes white/black on focus and click.")
+          print("Informasi Akun: normal black/white; hover, focus and active white/black.")
           PY
 
       - name: Commit and push fix
@@ -68,5 +78,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/page.jsx app/member-menu.jsx
-          git commit -m "fix: set account menu click state"
+          git commit -m "fix: set account menu hover colors"
           git push
