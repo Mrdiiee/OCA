@@ -1,0 +1,33 @@
+name: Fix account hover
+on:
+  push:
+    paths:
+      - .github/workflows/fix-account-hover.yml
+      - .github/workflows/fix-account-hover-trigger.txt
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix hover
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/member-menu.jsx')
+          s=p.read_text()
+          old='.shell .more-menu .mobile-account-link:hover{background:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;visibility:visible!important;opacity:1!important}'
+          new='.shell .more-menu .mobile-account-link:hover{background:#111!important;color:#fff!important;-webkit-text-fill-color:#fff!important;visibility:visible!important;opacity:1!important}'
+          if old not in s:
+              raise SystemExit('target hover rule not found')
+          p.write_text(s.replace(old,new,1))
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/member-menu.jsx
+          git commit -m 'Fix Informasi Akun hover to stay black with white text' || exit 0
+          git push
