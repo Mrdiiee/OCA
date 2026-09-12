@@ -35,14 +35,23 @@ export async function GET() {
   const context = await getAdminContext();
   if (context.error) return NextResponse.json({ error: context.error }, { status: context.status });
 
-  const { data: users, error: usersError } = await context.admin
-    .from('profiles')
-    .select('id, full_name, phone, city, updated_at')
-    .order('full_name', { ascending: true });
-  if (usersError) {
-    console.error('Oxygen Index member list error:', usersError);
-    return NextResponse.json({ error: 'Daftar member gagal dimuat.' }, { status: 500 });
+  // Oxygen Index is assigned to registered accounts, not only rows that happen
+  // to exist in profiles. Profiles are joined afterward for richer display data.
+  const { data: authData, error: authUsersError } = await context.admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (authUsersError) {
+    console.error('Oxygen Index auth member list error:', authUsersError);
+    return NextResponse.json({ error: 'Daftar akun terdaftar gagal dimuat.' }, { status: 500 });
   }
+
+  const { data: profiles, error: profilesError } = await context.admin
+    .from('profiles')
+    .select('id, full_name, phone, city, updated_at');
+  if (profilesError) {
+    console.error('Oxygen Index profile lookup error:', profilesError);
+    return NextResponse.json({ error: 'Data profil member gagal dimuat.' }, { status: 500 });
+  }
+
+  const profileById = Object.fromEntries((profiles || []).map((profile) => [profile.id, profile]));
 
   const { data: assessments, error: assessmentsError } = await context.admin
     .from('oxygen_index_assessments')
@@ -50,14 +59,29 @@ export async function GET() {
     .order('created_at', { ascending: false });
   if (assessmentsError) {
     console.error('Oxygen Index assessment list error:', assessmentsError);
-    return NextResponse.json({ error: 'Data penilaian gagal dimuat. Pastikan migration Oxygen Index sudah dijalankan.' }, { status: 500 });
+    return NextResponse.json({ error: 'Data penilaian gagal dimuat.' }, { status: 500 });
   }
 
   const latestByUser = {};
   for (const item of assessments || []) if (!latestByUser[item.user_id]) latestByUser[item.user_id] = item;
-  return NextResponse.json({
-    members: (users || []).map((member) => ({ ...member, assessment: latestByUser[member.id] || null })),
-  });
+
+  const members = (authData?.users || [])
+    .map((account) => {
+      const profile = profileById[account.id] || {};
+      return {
+        id: account.id,
+        full_name: profile.full_name || account.user_metadata?.full_name || account.email || 'Tanpa nama',
+        email: account.email || '',
+        phone: profile.phone || account.user_metadata?.phone || '',
+        city: profile.city || '',
+        created_at: account.created_at,
+        email_confirmed: Boolean(account.email_confirmed_at),
+        assessment: latestByUser[account.id] || null,
+      };
+    })
+    .sort((a, b) => String(a.full_name).localeCompare(String(b.full_name), 'id'));
+
+  return NextResponse.json({ members });
 }
 
 export async function POST(request) {
@@ -68,6 +92,9 @@ export async function POST(request) {
     const body = await request.json();
     const userId = String(body?.userId || '').trim();
     if (!userId) return NextResponse.json({ error: 'Member wajib dipilih.' }, { status: 400 });
+
+    const { data: targetUser, error: targetError } = await context.admin.auth.admin.getUserById(userId);
+    if (targetError || !targetUser?.user) return NextResponse.json({ error: 'Akun member tidak ditemukan.' }, { status: 404 });
 
     const scores = {};
     for (const field of FIELDS) {
@@ -85,7 +112,7 @@ export async function POST(request) {
 
     if (error) {
       console.error('Oxygen Index assessment insert error:', error);
-      return NextResponse.json({ error: 'Penilaian gagal disimpan. Pastikan migration Oxygen Index sudah dijalankan.' }, { status: 500 });
+      return NextResponse.json({ error: 'Penilaian gagal disimpan.' }, { status: 500 });
     }
     return NextResponse.json({ assessment: data }, { status: 201 });
   } catch (error) {
