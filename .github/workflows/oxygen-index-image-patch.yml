@@ -1,0 +1,40 @@
+name: Oxygen Index Image Patch
+on:
+  push:
+    paths:
+      - .github/workflows/oxygen-index-image-patch-trigger.txt
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace homepage Oxygen Index CTA
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/page.jsx')
+          s=p.read_text()
+          old='<a className="btn ghost" href="/oxygen-index">OXYGEN INDEX <Icon name="arrow" size={16}/></a>'
+          new='<a className="oxygen-index-image" href="/oxygen-index" aria-label="Oxygen Index"><img src="/oxygen-index.svg" alt="Oxygen Index" /></a>'
+          if old not in s:
+              raise SystemExit('target CTA not found')
+          s=s.replace(old,new,1)
+          anchor='.btn.ghost{background:transparent;color:var(--text);border-color:#69655e}'
+          css='.oxygen-index-image{width:180px;height:46px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #fff;padding:6px 10px;overflow:hidden;transition:transform .2s,opacity .2s}.oxygen-index-image img{display:block;width:100%;height:100%;object-fit:contain}.oxygen-index-image:hover{transform:translateY(-1px);opacity:.9}'
+          if css not in s:
+              if anchor not in s: raise SystemExit('CSS anchor not found')
+              s=s.replace(anchor,anchor+css,1)
+          mobile='.oxygen-index-image{width:170px;height:42px}'
+          marker='@media(max-width:650px){'
+          if mobile not in s:
+              s=s.replace(marker,marker+mobile,1)
+          p.write_text(s)
+          PY
+          rm -f .github/workflows/oxygen-index-image-patch-trigger.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx .github/workflows/oxygen-index-image-patch-trigger.txt
+          git commit -m 'Replace homepage Oxygen Index CTA with clickable image' || exit 0
+          git push
