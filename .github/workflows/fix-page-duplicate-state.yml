@@ -29,7 +29,7 @@ jobs:
               print("Landing page already has a closing brace.")
           PY
 
-      - name: Fix desktop account label visibility
+      - name: Fix desktop account menu hover
         shell: bash
         run: |
           python - <<'PY'
@@ -41,14 +41,17 @@ jobs:
           m = re.search(pattern, text, re.S)
           if not m:
               raise SystemExit("Desktop account rule not found; refusing unsafe edit.")
-          body = m.group(2)
-          for prop in ['color:#fff!important','-webkit-text-fill-color:#fff!important','text-shadow:none!important','visibility:visible!important','opacity:1!important']:
-              if prop not in body:
-                  body += prop
+          body = re.sub(r'color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:none!important;visibility:visible!important;opacity:1!important;?', '', m.group(2))
+          body = body.rstrip()
+          body += 'color:#fff!important;-webkit-text-fill-color:#fff!important;visibility:visible!important;opacity:1!important;text-shadow:none!important;'
           replacement = m.group(1) + body + m.group(3)
           text = text[:m.start()] + replacement + text[m.end():]
+          hover = '.shell .more-menu .mobile-account-link:hover{background:#111!important;color:#fff!important;-webkit-text-fill-color:#fff!important;visibility:visible!important;opacity:1!important}'
+          if hover not in text:
+              marker = m.group(1) + body + m.group(3)
+              text = text.replace(marker, marker + hover, 1)
           path.write_text(text)
-          print("Desktop Informasi Akun forced visible and white.")
+          print("Desktop Informasi Akun stays black with white text on hover.")
           PY
 
       - name: Commit and push fix
@@ -61,5 +64,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/page.jsx app/member-menu.jsx
-          git commit -m "fix: force account menu label visibility"
+          git commit -m "fix: keep account menu visible on hover"
           git push
