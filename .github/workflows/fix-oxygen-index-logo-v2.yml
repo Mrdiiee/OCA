@@ -1,0 +1,37 @@
+name: Fix Oxygen Index Logo V2
+on:
+  push:
+    paths:
+      - .github/workflows/fix-oxygen-index-logo-v2-trigger.txt
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refine desktop and mobile Oxygen Index logo
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('app/page.jsx')
+          s=p.read_text()
+          old=r'\.oxygen-index-logo\{[^}]*\}\.oxygen-word\{[^}]*\}\.index-word\{[^}]*\}\.index-word::first-letter\{[^}]*\}\.oxygen-index-logo:hover\{[^}]*\}\.oxygen-index-logo:active\{[^}]*\}\.oxygen-index-logo:focus-visible\{[^}]*\}'
+          new='.oxygen-index-logo{--logo-w:190px;--logo-h:50px;--oxy-size:29px;--idx-size:27px;--idx-w:92px;--idx-h:38px;position:relative;width:var(--logo-w);height:var(--logo-h);display:inline-flex;align-items:center;justify-content:flex-start;overflow:hidden;background:#fff;color:#050505;border:0;padding:0;text-decoration:none;line-height:1;white-space:nowrap;isolation:isolate;transition:transform .2s,opacity .2s}.oxygen-word{position:relative;z-index:1;display:block;margin-left:10px;color:#050505;font-family:Arial Black,Arial,Helvetica,sans-serif;font-size:var(--oxy-size);font-weight:900;letter-spacing:-.105em;line-height:1;transform:scaleX(.94);transform-origin:left center}.index-word{position:absolute;z-index:2;right:-1px;top:6px;width:var(--idx-w);height:var(--idx-h);display:flex;align-items:center;justify-content:center;margin:0;padding:0 4px 1px 10px;background:#e1261c;color:#fff;font-family:Arial Black,Arial,Helvetica,sans-serif;font-size:var(--idx-size);font-weight:900;letter-spacing:-.065em;line-height:1;transform:skewX(-13deg);clip-path:polygon(13% 0,100% 0,87% 100%,0 100%);transform-origin:center}.index-word{ text-indent:0 }.oxygen-index-logo:hover{transform:translateY(-1px);opacity:.96}.oxygen-index-logo:active{transform:none}.oxygen-index-logo:focus-visible{outline:2px solid #fff;outline-offset:3px}'
+          s,n=re.subn(old,new,s,count=1)
+          if n!=1: raise SystemExit('desktop logo css not found')
+          # Replace any existing mobile logo overrides with proportional values only; design remains identical.
+          s=re.sub(r'@media\(max-width:650px\)\{\.oxygen-index-logo\{[^}]*\}\.oxygen-word\{[^}]*\}\.index-word\{[^}]*\}', '@media(max-width:650px){.oxygen-index-logo{--logo-w:190px;--logo-h:50px;--oxy-size:29px;--idx-size:27px;--idx-w:92px;--idx-h:38px}', s, count=1)
+          # If a malformed/old mobile block remains elsewhere, append a single scoped override before the closing style tag.
+          marker='</style>'
+          if '@media(max-width:650px){.oxygen-index-logo{--logo-w:190px' not in s:
+              s=s.replace(marker,'@media(max-width:650px){.oxygen-index-logo{--logo-w:190px;--logo-h:50px;--oxy-size:29px;--idx-size:27px;--idx-w:92px;--idx-h:38px}}'+marker,1)
+          p.write_text(s)
+          PY
+          rm -f .github/workflows/fix-oxygen-index-logo-v2-trigger.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx .github/workflows/fix-oxygen-index-logo-v2-trigger.txt
+          git commit -m 'Refine Oxygen Index logo for identical desktop mobile design' || exit 0
+          git push
