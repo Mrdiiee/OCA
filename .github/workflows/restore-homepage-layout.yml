@@ -1,0 +1,97 @@
+name: Restore Homepage Layout
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  restore-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore previous layout and reapply media controls
+        shell: python
+        run: |
+          import re, subprocess
+          from pathlib import Path
+
+          BASE = '95ed21d037f4c6d5de0101f9baaaa684c4027439'
+          path = Path('app/page.jsx')
+          old = subprocess.check_output(['git', 'show', f'{BASE}:app/page.jsx'], text=True)
+
+          if 'homepageMedia' not in old:
+              old = old.replace(
+                  'const [products, setProducts] = useState(PRODUCTS); const [productsLoading, setProductsLoading] = useState(true);',
+                  'const [products, setProducts] = useState(PRODUCTS); const [productsLoading, setProductsLoading] = useState(true); const [homepageMedia, setHomepageMedia] = useState({});'
+              )
+              marker = '  const total = useMemo('
+              media_effect = '''  useEffect(() => {\n    let active = true;\n    async function loadHomepageMedia() {\n      try {\n        const response = await fetch("/api/homepage-media", { cache: "no-store" });\n        const data = await response.json();\n        if (!active) return;\n        if (response.ok && Array.isArray(data.media)) setHomepageMedia(Object.fromEntries(data.media.map((item) => [item.key, item])));\n      } catch {}\n    }\n    loadHomepageMedia();\n    return () => { active = false; };\n  }, []);\n\n'''
+              if marker not in old:
+                  raise SystemExit('Cannot locate homepage state insertion point')
+              old = old.replace(marker, media_effect + marker, 1)
+
+          replacements = {
+              'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1800&q=85': '{homepageMedia.hero?.url || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1800&q=85"}',
+              'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=85': '{homepageMedia.homepage_01?.url || "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=85"}',
+              'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1400&q=85': '{homepageMedia.homepage_02?.url || "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1400&q=85"}',
+              'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1400&q=85': '{homepageMedia.homepage_03?.url || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1400&q=85"}',
+              'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1400&q=85': '{homepageMedia.homepage_04?.url || "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1400&q=85"}',
+          }
+          for src, expr in replacements.items():
+              old = old.replace(f'src="{src}"', f'src={expr}')
+
+          # Replace the old text/arrow Oxygen Index CTA with the uploaded visual only.
+          old_cta = '<a className="btn ghost" href="/oxygen-index">OXYGEN INDEX <Icon name="arrow" size={16}/></a>'
+          new_cta = '<a className="oxygen-index-media" href="/oxygen-index" aria-label="Oxygen Index"><img src={homepageMedia.oxygen_index?.url || "/oxygen-index.webp"} alt="Oxygen Index" /></a>'
+          old = old.replace(old_cta, new_cta)
+
+          # Replace the complete header brand so the uploaded logo never renders on top of the old mark/text.
+          brand_pattern = re.compile(r'<a className="brand"[^>]*>.*?</a>', re.S)
+          matches = list(brand_pattern.finditer(old))
+          if not matches:
+              raise SystemExit('Cannot locate .brand anchor')
+          brand = matches[0].group(0)
+          href = re.search(r'href="([^"]+)"', brand)
+          href = href.group(1) if href else '/'
+          new_brand = f'<a className="brand" href="{href}" aria-label="Oxygen Gear">{{homepageMedia.logo?.url ? <img className="brand-logo-image" src={{homepageMedia.logo.url}} alt="Oxygen Gear" /> : <><span className="brand-mark" aria-hidden="true"></span>OXYGEN GEAR</>}}</a>'
+          old = old[:matches[0].start()] + new_brand + old[matches[0].end():]
+
+          # Keep the original homepage geometry; only add controlled media sizing.
+          media_css = '''\n.brand{width:150px;min-width:150px;flex:0 0 150px;overflow:hidden}.brand-logo-image{display:block;width:auto;height:30px;max-width:150px;object-fit:contain;object-position:left center}.oxygen-index-media{display:inline-flex;align-items:center;max-width:min(100%,780px);height:auto;text-decoration:none}.oxygen-index-media img{display:block;width:auto;height:clamp(48px,5.8vw,96px);max-width:100%;object-fit:contain;object-position:left center}.oxygen-index-media:hover{opacity:.94}.oxygen-index-media:focus-visible{outline:2px solid #fff;outline-offset:5px}@media(max-width:760px){.brand{width:126px;min-width:126px;flex-basis:126px}.brand-logo-image{height:25px;max-width:126px}.oxygen-index-media img{height:52px;max-width:92vw}}\n'''
+          if '.brand-logo-image{' in old:
+              old = re.sub(r'\.brand-logo-image\{[^}]*\}', '.brand-logo-image{display:block;width:auto;height:30px;max-width:150px;object-fit:contain;object-position:left center}', old, count=1)
+          else:
+              old = old.replace('</style>', media_css + '</style>', 1)
+
+          path.write_text(old, encoding='utf-8')
+
+      - name: Validate JSX
+        run: |
+          test -s app/page.jsx
+          grep -q 'homepageMedia' app/page.jsx
+          grep -q 'className="brand-logo-image"' app/page.jsx
+          grep -q 'className="oxygen-index-media"' app/page.jsx
+
+      - name: Commit repaired homepage
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: restore homepage layout and prevent logo overlap'
+          git push origin main
+
+      - name: Remove temporary workflow
+        if: success()
+        run: |
+          rm -f .github/workflows/restore-homepage-layout.yml
+          git add .github/workflows/restore-homepage-layout.yml
+          git commit -m 'chore: remove temporary homepage layout workflow' || true
+          git push origin main || true
