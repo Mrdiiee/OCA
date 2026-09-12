@@ -1,0 +1,349 @@
+/* Oxygen Gear — mobile layout stabilization */
+@media (max-width: 760px) {
+  html, body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box !important;
+  }
+
+  img, video, svg, canvas {
+    max-width: 100% !important;
+  }
+
+  .shell, .page, main, section, header, footer, nav {
+    max-width: 100% !important;
+  }
+
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  /* Header / navigation */
+  .shell .nav {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .shell .nav-inner,
+  .shell .nav-container,
+  .shell .nav-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .shell .brand {
+    width: 145px !important;
+    max-width: 145px !important;
+    height: 36px !important;
+    flex: 0 1 auto !important;
+  }
+
+  .shell .nav-links {
+    min-width: 0 !important;
+  }
+
+  /* Remove desktop-only positioning/offset behavior on mobile. */
+  .shell .nav-link,
+  .shell .more-menu,
+  .shell .search-panel,
+  .shell .hero-content,
+  .page .card,
+  .page .detail,
+  .page .categoryBlock {
+    transform: none !important;
+  }
+
+  /* Hero */
+  .shell .hero {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
+  }
+
+  .shell .hero-content {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 64px 20px 56px !important;
+    margin: 0 !important;
+  }
+
+  .shell .hero h1 {
+    max-width: 100% !important;
+    font-size: clamp(34px, 10vw, 52px) !important;
+    line-height: .98 !important;
+    letter-spacing: -.045em !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .shell .hero p {
+    max-width: 100% !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+  }
+
+  .shell .hero .btn,
+  .shell .hero a.btn {
+    max-width: 100% !important;
+  }
+
+  /* Home sections */
+  .shell .section {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .shell .section-title {
+    font-size: clamp(28px, 8vw, 40px) !important;
+    line-height: 1.02 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .shell .section-copy {
+    max-width: 100% !important;
+    line-height: 1.6 !important;
+  }
+
+  .shell .category-grid,
+  .shell .products-grid,
+  .shell .product-grid {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .shell .category,
+  .shell .product-card {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .shell .product-image {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .shell .product-info {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .shell .product-info h3,
+  .shell .product-info p,
+  .shell .product-code {
+    overflow-wrap: anywhere !important;
+  }
+
+  .shell .price-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    align-items: flex-end !important;
+  }
+
+  .shell .price-row > * {
+    min-width: 0 !important;
+  }
+
+  .shell .text-btn {
+    max-width: 100% !important;
+    white-space: normal !important;
+  }
+
+  /* Generic page layouts */
+  .page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 20px 20px 48px !important;
+    overflow-x: hidden !important;
+  }
+
+  .page > *,
+  .page .categoryBlock,
+  .page .categoryHead,
+  .page .grid,
+  .page .card,
+  .page .actions,
+  .page .visual,
+  .page .detail {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .page .categoryBlock {
+    margin: 32px 0 48px !important;
+  }
+
+  .page .categoryHead {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .page .categoryTitle,
+  .page .title {
+    max-width: 100% !important;
+    font-size: clamp(28px, 8vw, 38px) !important;
+    line-height: 1.05 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .page .description,
+  .page .section-copy,
+  .page p {
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .page .grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .page .card {
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .page .visual {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 4 / 3 !important;
+  }
+
+  .page .visual img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .page .card > .kind,
+  .page .card > .name,
+  .page .card > .description,
+  .page .card > .price,
+  .page .card > .actions {
+    margin-left: 20px !important;
+    margin-right: 20px !important;
+  }
+
+  .page .name {
+    font-size: clamp(24px, 7vw, 34px) !important;
+    line-height: 1.04 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .page .actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .page .btn,
+  .page .cartButton,
+  .page .checkout {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Horizontal filter rows should scroll inside themselves, never the page. */
+  .page .tools {
+    width: calc(100% + 40px) !important;
+    margin-left: -20px !important;
+    margin-right: -20px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    overflow: hidden !important;
+  }
+
+  .page .filters,
+  .page .subfilters {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .page .filter,
+  .page .subfilter {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+
+  /* Drawer/modal: fit viewport instead of inheriting desktop dimensions. */
+  .page .drawer,
+  .page .modal {
+    width: min(100vw, 560px) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto !important;
+  }
+
+  .page .overlay {
+    overflow: hidden !important;
+  }
+
+  /* Prevent long labels, URLs and IDs from creating invisible horizontal overflow. */
+  .page button,
+  .page a,
+  .page span,
+  .page strong,
+  .page small,
+  .shell button,
+  .shell a,
+  .shell span {
+    overflow-wrap: anywhere !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .container,
+  .page,
+  .shell .section,
+  .shell .hero-content {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .shell .brand {
+    width: 128px !important;
+    max-width: 128px !important;
+  }
+
+  .shell .hero-content {
+    padding-top: 48px !important;
+    padding-bottom: 44px !important;
+  }
+
+  .page .tools {
+    width: calc(100% + 32px) !important;
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
