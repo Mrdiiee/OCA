@@ -11,13 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Fix homepage image bindings
-        run: python - <<'PY'
-          from pathlib import Path
-          p=Path('app/page.jsx')
-          s=p.read_text()
-          s=s.replace('<img {homepageMedia.', '<img src={homepageMedia.')
-          p.write_text(s)
-          PY
+        run: python -c "from pathlib import Path; p=Path('app/page.jsx'); s=p.read_text(); p.write_text(s.replace('<img {homepageMedia.', '<img src={homepageMedia.'))"
       - uses: actions/setup-node@v4
         with:
           node-version: 20
