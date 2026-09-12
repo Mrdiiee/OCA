@@ -29,48 +29,15 @@ jobs:
               print("Landing page already has a closing brace.")
           PY
 
-      - name: Align desktop menu with mobile menu
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("app/member-menu.jsx")
-          text = path.read_text()
-          old = '@media(min-width:981px){.mobile-primary-nav,.mobile-account-link{display:none!important}}'
-          new = '''@media(min-width:981px){
-          .shell .more-menu{
-            position:absolute!important;top:50px!important;right:0!important;left:auto!important;width:360px!important;max-width:calc(100vw - 32px)!important;max-height:calc(100vh - 80px)!important;overflow-x:hidden!important;overflow-y:auto!important;padding:10px!important;border:1px solid #dededb!important;border-top:3px solid #111!important;border-radius:20px!important;background:rgba(255,255,255,.985)!important;color:#111!important;box-shadow:0 24px 70px rgba(0,0,0,.18)!important;backdrop-filter:blur(18px)!important;box-sizing:border-box!important
-          }
-          .shell .more-menu .mobile-account-link{order:-1!important;display:block!important;width:100%!important;min-height:50px!important;margin:0 0 8px!important;padding:15px 14px!important;border-radius:12px!important;background:#111!important;color:#fff!important;font-size:12px!important;font-weight:800!important;line-height:1.2!important;letter-spacing:.08em!important;text-align:left!important;box-sizing:border-box!important}
-          .shell .more-menu .mobile-primary-nav{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0!important;margin:0 0 10px!important;padding:4px!important;border:1px solid #ececea!important;border-radius:12px!important;background:#fafaf8!important}
-          .shell .more-menu .mobile-primary-nav a{display:flex!important;align-items:center!important;min-width:0!important;min-height:48px!important;padding:12px 10px!important;color:#111!important;text-decoration:none!important;font:800 10px/1.2 Arial,sans-serif!important;letter-spacing:.09em!important;border-bottom:1px solid #ececea!important;box-sizing:border-box!important}
-          .shell .more-menu .mobile-primary-nav a:nth-child(odd){border-right:1px solid #ececea!important}
-          .shell .more-menu .mobile-primary-nav a:nth-child(3),.shell .more-menu .mobile-primary-nav a:nth-child(4){border-bottom:0!important}
-          .shell .more-menu .more-item{width:100%!important;max-width:100%!important;margin:3px 0!important;padding:14px!important;border-radius:12px!important;transform:none!important;text-align:left!important;box-sizing:border-box!important;color:#151515!important}
-          .shell .more-menu .more-item:hover{background:#f6f6f4!important;color:#e1261c!important}
-          .shell .more-menu .more-section{width:100%!important;margin:2px 0 8px!important;padding:14px!important;border:0!important;background:#f7f7f5!important;border-radius:12px!important;box-sizing:border-box!important;text-align:left!important}
-          .shell .more-menu .more-label{display:block!important;color:#e1261c!important;font-weight:800!important;letter-spacing:.14em!important;text-align:left!important}
-          .shell .more-menu a::after,.shell .more-menu a::before,.shell .more-menu button::after,.shell .more-menu button::before,.shell .more-menu svg,.shell .more-menu .arrow,.shell .more-menu [aria-hidden="true"]{display:none!important;content:none!important}
-          .shell .more-menu a,.shell .more-menu span,.shell .more-menu strong{max-width:100%!important;overflow-wrap:anywhere!important;text-align:left!important;transform:none!important}
-          }'''
-          if old in text:
-              path.write_text(text.replace(old, new, 1))
-              print("Desktop menu aligned with mobile menu.")
-          elif 'desktop menu aligned with mobile menu' in text:
-              print("Desktop menu alignment already present.")
-          else:
-              raise SystemExit("Target desktop menu rule not found; refusing unsafe edit.")
-          PY
-
       - name: Commit and push fix
         shell: bash
         run: |
-          if git diff --quiet -- app/page.jsx app/member-menu.jsx; then
+          if git diff --quiet -- app/page.jsx; then
             echo "No changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/page.jsx app/member-menu.jsx
-          git commit -m "fix: align desktop menu with mobile layout"
+          git add app/page.jsx
+          git commit -m "fix: close landing page syntax"
           git push
