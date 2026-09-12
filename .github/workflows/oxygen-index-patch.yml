@@ -1,0 +1,91 @@
+name: Oxygen Index patch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply Oxygen Index navigation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          page = Path('app/page.jsx')
+          text = page.read_text()
+          old = 'href="/private-trip">BOOK PRIVATE TRIP <Icon name="arrow" size={16}/>'
+          new = 'href="/oxygen-index">OXYGEN INDEX <Icon name="arrow" size={16}/>'
+          if old in text:
+              text = text.replace(old, new, 1)
+              print('Homepage CTA updated.')
+          elif 'href="/oxygen-index">OXYGEN INDEX' in text:
+              print('Homepage CTA already updated.')
+          else:
+              raise SystemExit('Homepage private-trip CTA not found.')
+          page.write_text(text)
+
+          menu = Path('app/member-menu.jsx')
+          text = menu.read_text()
+          if 'oxygen-index-menu-item' not in text:
+              marker = 'function polishMobileMenu()'
+              pos = text.find(marker)
+              if pos < 0:
+                  raise SystemExit('Mobile menu function not found.')
+              fn = '''function addMobileOxygenIndexLink(menu){if(menu.querySelector(".oxygen-index-menu-item"))return;const item=document.createElement("a");item.className="more-item oxygen-index-menu-item";item.href="/oxygen-index";item.textContent="OXYGEN INDEX";const account=menu.querySelector(".mobile-account-link");if(account)account.insertAdjacentElement("afterend",item);else menu.prepend(item)}\n'''
+              text = text[:pos] + fn + text[pos:]
+          if 'addMobileOxygenIndexLink(menu);' not in text:
+              marker = 'addMobileAccountLink(menu);'
+              pos = text.find(marker)
+              if pos < 0:
+                  raise SystemExit('Mobile account call not found.')
+              pos += len(marker)
+              text = text[:pos] + 'addMobileOxygenIndexLink(menu);' + text[pos:]
+          menu.write_text(text)
+
+          account = Path('app/informasi-user/page.jsx')
+          text = account.read_text()
+          if 'oxygen-index-card' not in text:
+              marker = "  const postalCode = profile?.postal_code || '-';"
+              if marker not in text:
+                  raise SystemExit('Account score marker not found.')
+              score = "\n  const oxygenScoreRaw = Number(user?.user_metadata?.oxygen_index ?? 0);\n  const oxygenScore = Number.isFinite(oxygenScoreRaw) ? Math.max(0, Math.min(100, Math.round(oxygenScoreRaw))) : 0;\n  const oxygenLevel = oxygenScore >= 90 ? 'OXYGEN CORE' : oxygenScore >= 75 ? 'ADVANCED' : oxygenScore >= 50 ? 'FIELD READY' : oxygenScore >= 25 ? 'TRAIL READY' : 'FOUNDATION';"
+              text = text.replace(marker, marker + score, 1)
+              marker = '            <div className="actions"><a className="btn link" href="/pesanan-saya">PESANAN SAYA</a>'
+              if marker not in text:
+                  raise SystemExit('Account actions marker not found.')
+              card = '            <section className="card oxygen-index-card"><div className="label">OXYGEN INDEX</div><div className="index-row"><strong>{oxygenScore}<span>/100</span></strong><div><b>{oxygenLevel}</b><p>Skor kualifikasi yang ditetapkan tim Oxygen berdasarkan kesiapan, pengalaman, disiplin, dan kontribusi.</p></div></div><a className="index-link" href="/oxygen-index">LIHAT DETAIL OXYGEN INDEX</a></section>\n'
+              text = text.replace(marker, card + marker, 1)
+              css = '.oxygen-index-card{margin-top:18px}.index-row{display:grid;grid-template-columns:150px 1fr;gap:22px;align-items:center}.index-row>strong{font-size:56px;letter-spacing:-.06em;line-height:1}.index-row>strong span{font-size:14px;color:#77736c;letter-spacing:0;margin-left:5px}.index-row b{font-size:15px}.index-row p{color:#8b887f;font-size:12px;line-height:1.55;margin:7px 0 0}.index-link{display:inline-block;margin-top:18px;color:#f7f6f3;font-size:11px;font-weight:800;text-decoration:none}.index-link:hover{color:#e1261c}@media(max-width:700px){.index-row{grid-template-columns:1fr;gap:12px}}'
+              css_marker = '.actions{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}'
+              if css_marker not in text:
+                  raise SystemExit('Account CSS marker not found.')
+              text = text.replace(css_marker, css + css_marker, 1)
+              account.write_text(text)
+
+          # Repair the malformed desktop account-menu CSS left by the temporary patch workflow.
+          menu = Path('app/member-menu.jsx')
+          text = menu.read_text()
+          text = text.replace('box-sizing:border-box!important-webkit-text-fill-color:#fff!importanttext-shadow:none!importantvisibility:visible!importantopacity:1!importantcolor:#fff!important;-webkit-text-fill-color:#fff!important;visibility:visible!important;opacity:1!important;text-shadow:none!important;', 'box-sizing:border-box!important;color:#fff!important;-webkit-text-fill-color:#fff!important;visibility:visible!important;opacity:1!important;text-shadow:none!important;')
+          text = text.replace('.shell .more-menu .mobile-primary-nav.shell .more-menu .mobile-account-link:hover{background:#111!important;color:#fff!important;-webkit-text-fill-color:#fff!important;visibility:visible!important;opacity:1!important}{display:grid!important;', '.shell .more-menu .mobile-account-link:hover{background:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;visibility:visible!important;opacity:1!important}.shell .more-menu .mobile-primary-nav{display:grid!important;')
+          menu.write_text(text)
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          if git diff --quiet -- app/page.jsx app/member-menu.jsx app/informasi-user/page.jsx; then
+            echo 'No Oxygen Index changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx app/member-menu.jsx app/informasi-user/page.jsx
+          git commit -m 'feat: connect Oxygen Index to member experience'
+          git push
