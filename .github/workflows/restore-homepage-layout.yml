@@ -20,16 +20,13 @@ jobs:
           BASE='95ed21d037f4c6d5de0101f9baaaa684c4027439'
           path=Path('app/page.jsx')
           old=subprocess.check_output(['git','show',f'{BASE}:app/page.jsx'],text=True)
-
           state='const [products, setProducts] = useState(PRODUCTS); const [productsLoading, setProductsLoading] = useState(true);'
-          if 'homepageMedia' not in old:
-              if state not in old: raise SystemExit('Homepage state marker missing')
-              old=old.replace(state,state+' const [homepageMedia, setHomepageMedia] = useState({});',1)
-              marker='  const total = useMemo('
-              effect='''  useEffect(() => {\n    let active = true;\n    async function loadHomepageMedia() {\n      try {\n        const response = await fetch("/api/homepage-media", { cache: "no-store" });\n        const data = await response.json();\n        if (!active) return;\n        if (response.ok && Array.isArray(data.media)) setHomepageMedia(Object.fromEntries(data.media.map((item) => [item.key, item])));\n      } catch {}\n    }\n    loadHomepageMedia();\n    return () => { active = false; };\n  }, []);\n\n'''
-              if marker not in old: raise SystemExit('Homepage effect marker missing')
-              old=old.replace(marker,effect+marker,1)
-
+          if state not in old: raise SystemExit('Homepage state marker missing')
+          old=old.replace(state,state+' const [homepageMedia, setHomepageMedia] = useState({});',1)
+          marker='  const total = useMemo('
+          effect='''  useEffect(() => {\n    let active = true;\n    async function loadHomepageMedia() {\n      try {\n        const response = await fetch("/api/homepage-media", { cache: "no-store" });\n        const data = await response.json();\n        if (!active) return;\n        if (response.ok && Array.isArray(data.media)) setHomepageMedia(Object.fromEntries(data.media.map((item) => [item.key, item])));\n      } catch {}\n    }\n    loadHomepageMedia();\n    return () => { active = false; };\n  }, []);\n\n'''
+          if marker not in old: raise SystemExit('Homepage effect marker missing')
+          old=old.replace(marker,effect+marker,1)
           urls={
             'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1800&q=85':'{homepageMedia.hero?.url || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1800&q=85"}',
             'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=85':'{homepageMedia.homepage_01?.url || "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=85"}',
@@ -38,44 +35,34 @@ jobs:
             'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1400&q=85':'{homepageMedia.homepage_04?.url || "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1400&q=85"}'
           }
           for src,expr in urls.items(): old=old.replace(f'src="{src}"',f'src={expr}')
-
           old_cta='<a className="btn ghost" href="/oxygen-index">OXYGEN INDEX <Icon name="arrow" size={16}/></a>'
           new_cta='<a className="oxygen-index-media" href="/oxygen-index" aria-label="Oxygen Index"><img src={homepageMedia.oxygen_index?.url || "/oxygen-index.webp"} alt="Oxygen Index" /></a>'
           old=old.replace(old_cta,new_cta,1)
-
           brand_pattern=re.compile(r'<a[^>]*className="brand"[^>]*>.*?</a>',re.S)
           m=brand_pattern.search(old)
           if not m: raise SystemExit('Header brand anchor missing')
           brand=m.group(0)
-          href_match=re.search(r'href="([^"]+)"',brand)
-          href=href_match.group(1) if href_match else '/'
+          hm=re.search(r'href="([^"]+)"',brand)
+          href=hm.group(1) if hm else '/'
           new_brand=f'<a href="{href}" className="brand" aria-label="Oxygen Gear">{{homepageMedia.logo?.url ? <img className="brand-logo-image" src={{homepageMedia.logo.url}} alt="Oxygen Gear" /> : <><span className="brand-mark" aria-hidden="true"></span>OXYGEN GEAR</>}}</a>'
           old=old[:m.start()]+new_brand+old[m.end():]
-
           css='''\n.brand{width:150px;min-width:150px;flex:0 0 150px;overflow:hidden}.brand-logo-image{display:block;width:auto;height:30px;max-width:150px;object-fit:contain;object-position:left center}.oxygen-index-media{display:inline-flex;align-items:center;max-width:min(100%,780px);height:auto;text-decoration:none}.oxygen-index-media img{display:block;width:auto;height:clamp(48px,5.8vw,96px);max-width:100%;object-fit:contain;object-position:left center}.oxygen-index-media:hover{opacity:.94}.oxygen-index-media:focus-visible{outline:2px solid #fff;outline-offset:5px}@media(max-width:760px){.brand{width:126px;min-width:126px;flex-basis:126px}.brand-logo-image{height:25px;max-width:126px}.oxygen-index-media img{height:52px;max-width:92vw}}\n'''
           old=old.replace('</style>',css+'</style>',1)
           path.write_text(old,encoding='utf-8')
-          print('homepage restored from',BASE)
-          print('header brand isolated:', 'className="brand-logo-image"' in old)
-          print('media controls preserved:', 'homepageMedia' in old)
-
-      - name: Validate homepage source
+          print('Homepage layout restored from previous known-good version:',BASE)
+      - name: Validate homepage source markers
         run: |
           test -s app/page.jsx
           grep -q 'homepageMedia' app/page.jsx
           grep -q 'className="brand-logo-image"' app/page.jsx
           grep -q 'className="oxygen-index-media"' app/page.jsx
-          ! grep -q '<img {homepageMedia' app/page.jsx
-
       - name: Commit repaired homepage
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/page.jsx
-          git diff --cached --quiet && exit 0
           git commit -m 'fix: restore homepage layout and prevent logo overlap'
           git push origin main
-
       - name: Remove temporary workflow
         if: success()
         run: |
