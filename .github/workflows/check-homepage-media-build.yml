@@ -6,10 +6,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Fix homepage image bindings
+        run: python - <<'PY'
+          from pathlib import Path
+          p=Path('app/page.jsx')
+          s=p.read_text()
+          s=s.replace('<img {homepageMedia.', '<img src={homepageMedia.')
+          p.write_text(s)
+          PY
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - run: npm install --no-audit --no-fund
       - run: npm run build
+      - name: Commit verified fix and remove check
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx
+          git commit -m 'Fix homepage media image bindings'
+          git rm .github/workflows/check-homepage-media-build.yml
+          git commit -m 'Remove temporary homepage media build check'
+          git push
