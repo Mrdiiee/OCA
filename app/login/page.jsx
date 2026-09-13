@@ -23,8 +23,9 @@ export default function LoginPage() {
     let active = true;
     supabase.auth.getUser().then(async ({ data }) => {
       if (!active || !data.user) return;
-      if (data.user.email_confirmed_at) { window.location.replace('/informasi-user'); return; }
-      await supabase.auth.signOut();
+      // Keep the login page available for authenticated users instead of
+      // forcing them into Informasi User. A successful login below decides
+      // the destination explicitly (homepage or a safe `next` path).
     });
     return () => { active = false; };
   }, [mode, supabase]);
