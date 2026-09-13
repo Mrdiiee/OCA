@@ -38,9 +38,8 @@ export default function AccountMenu() {
     };
 
     syncAccountEntry();
-    const observer = new MutationObserver(syncAccountEntry);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    const timers = [0, 100, 300, 800].map((delay) => window.setTimeout(syncAccountEntry, delay));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [user]);
 
   const handleLogout = async () => {
