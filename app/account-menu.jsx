@@ -6,15 +6,20 @@ import { createClient } from '../lib/supabase-browser';
 export default function AccountMenu() {
   const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState(null);
+  const [authResolved, setAuthResolved] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
     supabase.auth.getUser().then(({ data }) => {
-      if (active) setUser(data.user ?? null);
+      if (!active) return;
+      setUser(data.user ?? null);
+      setAuthResolved(true);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (active) setUser(session?.user ?? null);
+      if (!active) return;
+      setUser(session?.user ?? null);
+      setAuthResolved(true);
     });
     return () => {
       active = false;
@@ -23,26 +28,46 @@ export default function AccountMenu() {
   }, [supabase]);
 
   useEffect(() => {
+    if (!authResolved) return undefined;
+    let stopped = false;
+    let timer = null;
     const syncAccountEntry = () => {
+      if (stopped) return true;
       const menu = document.querySelector('.more-menu');
-      if (!menu) return;
+      if (!menu) return false;
       const entry = menu.querySelector('a[href="/informasi-user"], a[href="/login"], .account-entry');
-      if (!entry) return;
+      if (!entry) return false;
       entry.classList.add('account-entry');
       entry.href = user ? '/informasi-user' : '/login';
       entry.textContent = user ? 'Informasi Akun' : 'Daftar / Login';
       entry.setAttribute('aria-label', user ? 'Informasi Akun' : 'Daftar atau Login');
+      entry.onclick = (event) => {
+        if (!user) {
+          event.preventDefault();
+          window.location.assign('/login');
+        }
+      };
+      return true;
     };
 
-    syncAccountEntry();
-    const observer = new MutationObserver(syncAccountEntry);
-    observer.observe(document.body, { childList: true, subtree: true });
-    const timers = [0, 100, 300, 800].map((delay) => window.setTimeout(syncAccountEntry, delay));
+    if (syncAccountEntry()) return undefined;
+    timer = window.setInterval(() => {
+      if (syncAccountEntry()) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    }, 100);
+    const stopTimer = window.setTimeout(() => {
+      if (timer) window.clearInterval(timer);
+      timer = null;
+      stopped = true;
+    }, 5000);
     return () => {
-      observer.disconnect();
-      timers.forEach((timer) => window.clearTimeout(timer));
+      stopped = true;
+      if (timer) window.clearInterval(timer);
+      window.clearTimeout(stopTimer);
     };
-  }, [user]);
+  }, [user, authResolved]);
 
   const handleLogout = async () => {
     setLoading(true);
