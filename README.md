@@ -35,9 +35,10 @@ npm install
 npm run dev
 ```
 
-Lalu buka http://localhost:3000 di browser.
+Lalu buka http://localhost:3000.
 
 ## Catatan
 
 - Harga dan deskripsi produk di dalam `app/page.jsx` masih contoh awal — silakan ganti sesuai data asli.
 - Form checkout masih mode uji coba (belum terhubung pembayaran asli). Ini akan disambungkan pada tahap berikutnya bersama Claude.
+- Deployment trigger diperbarui setelah pemulihan homepage ke baseline yang valid.
