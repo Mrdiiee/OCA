@@ -4,6 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const publicCache = { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=60" };
+const noCache = { "Cache-Control": "no-store" };
+
 export async function GET(request) {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -26,7 +29,7 @@ export async function GET(request) {
     const { data, error } = await query;
     if (error) {
       console.error("Gagal mengambil produk:", error);
-      return NextResponse.json({ error: "Produk gagal dimuat." }, { status: 500, headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ error: "Produk gagal dimuat." }, { status: 500, headers: noCache });
     }
     const mapProduct = (row) => {
       const image = typeof row.image_url === "string" && row.image_url.trim() ? row.image_url.trim() : null;
@@ -39,12 +42,12 @@ export async function GET(request) {
       };
     };
     if (slug) {
-      if (!data?.length) return NextResponse.json({ error: "Produk tidak ditemukan." }, { status: 404, headers: { "Cache-Control": "no-store" } });
-      return NextResponse.json({ product: mapProduct(data[0]) }, { headers: { "Cache-Control": "no-store" } });
+      if (!data?.length) return NextResponse.json({ error: "Produk tidak ditemukan." }, { status: 404, headers: noCache });
+      return NextResponse.json({ product: mapProduct(data[0]) }, { headers: publicCache });
     }
-    return NextResponse.json({ products: (data || []).map(mapProduct) }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ products: (data || []).map(mapProduct) }, { headers: publicCache });
   } catch (error) {
     console.error("Products API error:", error);
-    return NextResponse.json({ error: "Terjadi kesalahan saat memuat produk." }, { status: 500, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ error: "Terjadi kesalahan saat memuat produk." }, { status: 500, headers: noCache });
   }
 }
