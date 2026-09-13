@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const shouldHandleNavigation = (anchor, event) => {
   if (!anchor || event.defaultPrevented) return false;
@@ -17,6 +17,7 @@ const shouldHandleNavigation = (anchor, event) => {
 
 export default function EventMenu() {
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const onClick = (event) => {
@@ -46,7 +47,7 @@ export default function EventMenu() {
   }, [router]);
 
   useEffect(() => {
-    if (window.location.pathname !== "/produk") return undefined;
+    if (pathname !== "/produk") return undefined;
     const existing = document.querySelector('script[data-oxygen-midtrans="true"]');
     if (existing) return undefined;
 
@@ -56,26 +57,20 @@ export default function EventMenu() {
       : "https://app.sandbox.midtrans.com/snap/snap.js";
     script.dataset.oxygenMidtrans = "true";
     script.async = true;
-    const clientKey = document.querySelector('meta[name="midtrans-client-key"]')?.getAttribute("content");
-    if (clientKey) script.setAttribute("data-client-key", clientKey);
+    if (process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY) {
+      script.setAttribute("data-client-key", process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY);
+    }
     document.head.appendChild(script);
-    return () => {
-      script.remove();
-    };
-  }, []);
+    return () => { script.remove(); };
+  }, [pathname]);
 
   useEffect(() => {
     const nav = document.querySelector(".nav-links");
     if (!nav || nav.querySelector(".event-nav-wrap")) return;
 
-    const privateTrip = Array.from(nav.querySelectorAll("a")).find(
-      (link) => link.getAttribute("href") === "/private-trip"
-    );
+    const privateTrip = Array.from(nav.querySelectorAll("a")).find((link) => link.getAttribute("href") === "/private-trip");
     if (!privateTrip) return;
-
-    const contact = Array.from(nav.querySelectorAll("a")).find(
-      (link) => link.getAttribute("href") === "/kontak"
-    );
+    const contact = Array.from(nav.querySelectorAll("a")).find((link) => link.getAttribute("href") === "/kontak");
     if (contact) contact.remove();
 
     const wrap = document.createElement("div");
@@ -94,7 +89,6 @@ export default function EventMenu() {
     menu.className = "event-nav-menu";
     menu.setAttribute("role", "menu");
     Object.assign(menu.style, { display: "none", position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: "330px", padding: "10px", background: "#fff", border: "1px solid #e5e5e5", borderTop: "2px solid #e1261c", boxShadow: "0 18px 50px rgba(0,0,0,.13)", zIndex: "120" });
-
     menu.innerHTML = `
       <a href="/event" class="event-nav-item" role="menuitem"><strong>SEMUA EVENT</strong><span>Lihat seluruh agenda Oxygen Gear</span></a>
       <a href="/event#pendakian-bersama" class="event-nav-item" role="menuitem"><strong>PENDAKIAN BERSAMA</strong><span>Agenda pendakian komunitas</span></a>
