@@ -26,10 +26,7 @@ export default function AccountMenu() {
     const syncAccountEntry = () => {
       const menu = document.querySelector('.more-menu');
       if (!menu) return;
-      const entry = Array.from(menu.querySelectorAll('a.more-item, a.mobile-account-link')).find((item) => {
-        const text = item.textContent?.trim().toLowerCase();
-        return text === 'informasi akun' || text === 'daftar / login';
-      });
+      const entry = menu.querySelector('a[href="/informasi-user"], a[href="/login"], .account-entry');
       if (!entry) return;
       entry.classList.add('account-entry');
       entry.href = user ? '/informasi-user' : '/login';
@@ -38,8 +35,13 @@ export default function AccountMenu() {
     };
 
     syncAccountEntry();
+    const observer = new MutationObserver(syncAccountEntry);
+    observer.observe(document.body, { childList: true, subtree: true });
     const timers = [0, 100, 300, 800].map((delay) => window.setTimeout(syncAccountEntry, delay));
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
+    return () => {
+      observer.disconnect();
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
   }, [user]);
 
   const handleLogout = async () => {
