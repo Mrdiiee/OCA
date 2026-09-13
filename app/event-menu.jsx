@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { createClient } from "../lib/supabase-browser";
+import { useEffect } from "react";
 
 export default function EventMenu() {
-  const supabase = useMemo(() => createClient(), []);
-
   useEffect(() => {
     const nav = document.querySelector(".nav-links");
     if (!nav || nav.querySelector(".event-nav-wrap")) return;
@@ -148,49 +145,6 @@ export default function EventMenu() {
       if (contact && !nav.contains(contact)) nav.append(contact);
     };
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    let timer;
-
-    const syncGuestAccountAction = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!active) return;
-      const loggedIn = Boolean(data.user);
-
-      const memberMenu = document.querySelector(".context-nav-member .context-nav-menu");
-      if (!memberMenu) return;
-
-      const desktopAccount = memberMenu.querySelector('a.context-nav-item[href="/informasi-user"]');
-      if (desktopAccount) {
-        desktopAccount.href = loggedIn ? "/informasi-user" : "/login";
-        const strong = desktopAccount.querySelector("strong");
-        const span = desktopAccount.querySelector("span");
-        if (strong) strong.textContent = loggedIn ? "INFORMASI AKUN" : "DAFTAR / LOGIN";
-        if (span) span.textContent = loggedIn ? "Kelola profil dan informasi akun" : "Masuk atau buat akun Oxygen Gear";
-      }
-
-      const mobileAccount = memberMenu.querySelector(".mobile-account-link");
-      if (mobileAccount) {
-        mobileAccount.href = loggedIn ? "/informasi-user" : "/login";
-        mobileAccount.textContent = loggedIn ? "Informasi Akun" : "Daftar / Login";
-      }
-    };
-
-    const waitForMemberMenu = () => {
-      syncGuestAccountAction();
-      timer = window.setTimeout(waitForMemberMenu, 250);
-    };
-
-    waitForMemberMenu();
-    const { data: listener } = supabase.auth.onAuthStateChange(() => syncGuestAccountAction());
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-      listener.subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   return (
     <style dangerouslySetInnerHTML={{
