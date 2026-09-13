@@ -1,0 +1,35 @@
+name: Fix Oxygen Index CTA background
+on:
+  push:
+    paths:
+      - .github/workflows/fix-oxygen-index-no-black-frame.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove black frame and keep full logo image
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/page.jsx')
+          s=p.read_text()
+          old='.hero-index-btn{background:var(--text);color:var(--bg);border-color:var(--text);overflow:hidden}'
+          new='.hero-index-btn{background:#fff;color:#111;border-color:#fff;overflow:hidden;padding:0!important}'
+          if old not in s:
+              raise SystemExit('button CSS target not found')
+          s=s.replace(old,new,1)
+          old2='.hero-index-btn:hover{background:var(--red);border-color:var(--red);color:#fff}.hero-index-btn:hover img{filter:brightness(0) invert(1)}'
+          new2='.hero-index-btn:hover{background:#fff;border-color:#fff;color:#111}.hero-index-btn:hover img{filter:none!important}'
+          if old2 not in s:
+              raise SystemExit('hover CSS target not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx .github/workflows/fix-oxygen-index-no-black-frame.yml
+          git commit -m 'fix: remove black frame from Oxygen Index CTA' || exit 0
+          git push
