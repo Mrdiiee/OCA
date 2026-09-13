@@ -2,7 +2,7 @@ name: Fix Hero Oxygen Index CTA
 on:
   push:
     paths:
-      - .github/workflows/fix-hero-index-cta-trigger.txt
+      - .github/workflows/fix-hero-index-cta.yml
 permissions:
   contents: write
 jobs:
@@ -23,9 +23,8 @@ jobs:
           s=s.replace(old,new,1)
           p.write_text(s)
           PY
-          rm -f .github/workflows/fix-hero-index-cta-trigger.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/page.jsx .github/workflows/fix-hero-index-cta-trigger.txt
+          git add app/page.jsx
           git commit -m 'fix: contain Oxygen Index logo inside hero CTA' || exit 0
           git push
