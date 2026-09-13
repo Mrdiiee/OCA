@@ -146,5 +146,9 @@ export default function EventMenu() {
     };
   }, []);
 
-  return null;
+  return (
+    <style dangerouslySetInnerHTML={{
+      __html: '.context-nav-member .context-nav-item[href="/pesanan-saya"]{display:none!important}',
+    }} />
+  );
 }
