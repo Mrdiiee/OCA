@@ -4,32 +4,13 @@ import { useEffect } from "react";
 
 export default function EventMenu() {
   useEffect(() => {
-    const cleanupMemberOrderItem = () => {
-      document.querySelectorAll(".context-nav-member .context-nav-item").forEach((item) => {
-        const title = item.querySelector("strong")?.textContent?.trim().toUpperCase();
-        if (title === "PESANAN SAYA") {
-          item.remove();
-        }
-        if (title === "STATUS PENGIRIMAN") {
-          const copy = item.querySelector("span");
-          if (copy) copy.textContent = "Pantau pesanan dan perjalanan pengiriman";
-        }
-      });
-    };
-
-    cleanupMemberOrderItem();
-    const memberMenuObserver = new MutationObserver(cleanupMemberOrderItem);
-    memberMenuObserver.observe(document.body, { childList: true, subtree: true });
-
     const nav = document.querySelector(".nav-links");
-    if (!nav || nav.querySelector(".event-nav-wrap")) {
-      return () => memberMenuObserver.disconnect();
-    }
+    if (!nav || nav.querySelector(".event-nav-wrap")) return;
 
     const privateTrip = Array.from(nav.querySelectorAll("a")).find(
       (link) => link.getAttribute("href") === "/private-trip"
     );
-    if (!privateTrip) return () => memberMenuObserver.disconnect();
+    if (!privateTrip) return;
 
     const contact = Array.from(nav.querySelectorAll("a")).find(
       (link) => link.getAttribute("href") === "/kontak"
@@ -119,8 +100,6 @@ export default function EventMenu() {
       trigger.style.color = open ? "#e1261c" : "#111";
     };
 
-    // EVENT behaves like PRODUK: moving the mouse over the toolbar item
-    // immediately opens its own event categories.
     const openOnHover = () => setOpen(true);
     const closeOnLeave = () => {
       clearTimeout(closeTimer);
@@ -156,7 +135,6 @@ export default function EventMenu() {
 
     return () => {
       clearTimeout(closeTimer);
-      memberMenuObserver.disconnect();
       document.removeEventListener("click", close);
       document.removeEventListener("keydown", onKeyDown);
       trigger.removeEventListener("mouseenter", openOnHover);
