@@ -4,13 +4,32 @@ import { useEffect } from "react";
 
 export default function EventMenu() {
   useEffect(() => {
+    const cleanupMemberOrderItem = () => {
+      document.querySelectorAll(".context-nav-member .context-nav-item").forEach((item) => {
+        const title = item.querySelector("strong")?.textContent?.trim().toUpperCase();
+        if (title === "PESANAN SAYA") {
+          item.remove();
+        }
+        if (title === "STATUS PENGIRIMAN") {
+          const copy = item.querySelector("span");
+          if (copy) copy.textContent = "Pantau pesanan dan perjalanan pengiriman";
+        }
+      });
+    };
+
+    cleanupMemberOrderItem();
+    const memberMenuObserver = new MutationObserver(cleanupMemberOrderItem);
+    memberMenuObserver.observe(document.body, { childList: true, subtree: true });
+
     const nav = document.querySelector(".nav-links");
-    if (!nav || nav.querySelector(".event-nav-wrap")) return;
+    if (!nav || nav.querySelector(".event-nav-wrap")) {
+      return () => memberMenuObserver.disconnect();
+    }
 
     const privateTrip = Array.from(nav.querySelectorAll("a")).find(
       (link) => link.getAttribute("href") === "/private-trip"
     );
-    if (!privateTrip) return;
+    if (!privateTrip) return () => memberMenuObserver.disconnect();
 
     const contact = Array.from(nav.querySelectorAll("a")).find(
       (link) => link.getAttribute("href") === "/kontak"
@@ -137,6 +156,7 @@ export default function EventMenu() {
 
     return () => {
       clearTimeout(closeTimer);
+      memberMenuObserver.disconnect();
       document.removeEventListener("click", close);
       document.removeEventListener("keydown", onKeyDown);
       trigger.removeEventListener("mouseenter", openOnHover);
