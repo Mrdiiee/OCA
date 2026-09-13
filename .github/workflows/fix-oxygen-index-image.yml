@@ -10,29 +10,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch homepage image
+      - name: Patch homepage CTA layout
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('app/page.jsx')
           s=p.read_text()
-          old='<a className="oxygen-index-image" href="/oxygen-index" aria-label="Oxygen Index"><img src="/oxygen-index.svg" alt="Oxygen Index" /></a>'
-          new='<a className="oxygen-index-image" href="/oxygen-index" aria-label="Oxygen Index"><img src="/oxygen-index.webp" alt="Oxygen Index" draggable="false" /></a>'
-          if old in s:
-              s=s.replace(old,new,1)
-          elif '/oxygen-index.svg' in s:
-              s=s.replace('/oxygen-index.svg','/oxygen-index.webp',1)
-              s=s.replace('<img src="/oxygen-index.webp" alt="Oxygen Index" />','<img src="/oxygen-index.webp" alt="Oxygen Index" draggable="false" />',1)
-          else:
-              raise SystemExit('Oxygen Index image target not found')
-          s=s.replace('.oxygen-index-image{width:180px;height:46px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #fff;padding:6px 10px;overflow:hidden;transition:transform .2s,opacity .2s}', '.oxygen-index-image{width:180px;height:46px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;padding:0;overflow:hidden;transition:transform .2s,opacity .2s;-webkit-user-drag:none;user-select:none}')
-          s=s.replace('.oxygen-index-image img{display:block;width:100%;height:100%;object-fit:contain}', '.oxygen-index-image img{display:block;width:100%;height:auto;max-height:100%;object-fit:contain;-webkit-user-drag:none;user-select:none;pointer-events:none}')
-          s=s.replace('.oxygen-index-image:hover{transform:translateY(-1px);opacity:.9}', '.oxygen-index-image:hover{transform:translateY(-1px);opacity:.9}.oxygen-index-image:active{transform:none}')
+          old='<div className="hero-actions"><a className="btn" href="#koleksi">SHOP THE COLLECTION <Icon name="arrow" size={16}/></a><a className="oxygen-index-media" href="/oxygen-index" aria-label="Oxygen Index"><img src={homepageMedia.oxygen_index?.url || "/oxygen-index.webp"} alt="Oxygen Index" /></a></div>'
+          new='<div className="hero-actions"><a className="btn hero-collection-btn" href="#koleksi">SHOP THE COLLECTION <Icon name="arrow" size={16}/></a><a className="btn hero-index-btn" href="/oxygen-index" aria-label="Oxygen Index"><img src={homepageMedia.oxygen_index?.url || "/oxygen-index.webp"} alt="Oxygen Index" draggable="false" /></a></div>'
+          if old not in s:
+              raise SystemExit('Hero CTA target not found')
+          s=s.replace(old,new,1)
+          s=s.replace('.hero-actions{display:flex;gap:10px;flex-wrap:wrap}', '.hero-actions{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}.hero-actions .hero-collection-btn,.hero-actions .hero-index-btn{width:220px;height:48px;min-height:48px;padding:13px 18px}.hero-index-btn{background:var(--text);color:var(--bg);border-color:var(--text);overflow:hidden}.hero-index-btn img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;pointer-events:none;-webkit-user-drag:none;user-select:none}.hero-index-btn:hover{background:var(--red);border-color:var(--red);color:#fff}.hero-index-btn:hover img{filter:brightness(0) invert(1)}')
+          s=s.replace('.oxygen-index-media{display:inline-flex;align-items:center;max-width:min(100%,780px);text-decoration:none}', '.oxygen-index-media{display:inline-flex;align-items:center;max-width:min(100%,780px);text-decoration:none}')
+          s=s.replace('@media(max-width:650px){.oxygen-index-logo{--logo-w:190px;--logo-h:50px;--oxy-size:29px;--idx-size:27px;--idx-w:92px;--idx-h:38px}', '@media(max-width:650px){.hero-actions .hero-collection-btn,.hero-actions .hero-index-btn{width:100%;height:48px;min-height:48px}.oxygen-index-logo{--logo-w:190px;--logo-h:50px;--oxy-size:29px;--idx-size:27px;--idx-w:92px;--idx-h:38px}',1)
           p.write_text(s)
           PY
           rm -f .github/workflows/fix-oxygen-index-image-trigger.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/page.jsx .github/workflows/fix-oxygen-index-image-trigger.txt
-          git commit -m 'Use uploaded Oxygen Index image and disable drag' || exit 0
+          git commit -m 'fix: align Oxygen Index with hero CTA' || exit 0
           git push
