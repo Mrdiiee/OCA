@@ -3,11 +3,7 @@ import { createServerSupabaseClient } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-const LABELS = {
-  pendakian_bersama: 'Pendakian Bersama', ekspedisi: 'Ekspedisi', private_trip: 'Private Trip',
-  community_event: 'Event Komunitas', volunteer_crew: 'Volunteer / Crew', social: 'Kegiatan Sosial',
-  environment: 'Kegiatan Lingkungan', other: 'Aktivitas Lain', product_purchase: 'Pembelian Produk',
-};
+const LABELS = { pendakian_bersama: 'Pendakian Bersama', ekspedisi: 'Ekspedisi', private_trip: 'Private Trip', community_event: 'Event Komunitas', volunteer_crew: 'Volunteer / Crew', social: 'Kegiatan Sosial', environment: 'Kegiatan Lingkungan', other: 'Aktivitas Lain', product_purchase: 'Pembelian Produk', };
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
@@ -33,10 +29,5 @@ export async function GET() {
   const contributions = verifiedActivities.filter((item) => contributionTypes.has(item.activity_type));
   const support = verifiedActivities.filter((item) => item.activity_type === 'product_purchase');
 
-  return NextResponse.json({
-    member: member ? { ...member, is_member: member.status === 'active' } : null,
-    activities: verifiedActivities.map((item) => ({ ...item, label: LABELS[item.activity_type] || item.activity_type })),
-    stats: { total: verifiedActivities.length, journeys: journeys.length, contributions: contributions.length, support: support.length },
-    oxygen_index: { current: assessments?.[0] || null, history: assessments || [] },
-  });
+  return NextResponse.json({ member: member ? { ...member, is_member: member.status === 'active' } : null, activities: verifiedActivities.map((item) => ({ ...item, label: LABELS[item.activity_type] || item.activity_type })), stats: { total: verifiedActivities.length, journeys: journeys.length, contributions: contributions.length, support: support.length }, oxygen_index: { current: assessments?.[0] || null, history: assessments || [] } });
 }
