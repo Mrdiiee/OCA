@@ -22,6 +22,27 @@ export default function AccountMenu() {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    const syncAccountEntry = () => {
+      const menu = document.querySelector('.more-menu');
+      if (!menu) return;
+      const entry = Array.from(menu.querySelectorAll('a.more-item, a.mobile-account-link')).find((item) => {
+        const text = item.textContent?.trim().toLowerCase();
+        return text === 'informasi akun' || text === 'daftar / login';
+      });
+      if (!entry) return;
+      entry.classList.add('account-entry');
+      entry.href = user ? '/informasi-user' : '/login';
+      entry.textContent = user ? 'Informasi Akun' : 'Daftar / Login';
+      entry.setAttribute('aria-label', user ? 'Informasi Akun' : 'Daftar atau Login');
+    };
+
+    syncAccountEntry();
+    const observer = new MutationObserver(syncAccountEntry);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [user]);
+
   const handleLogout = async () => {
     setLoading(true);
     await supabase.auth.signOut();
