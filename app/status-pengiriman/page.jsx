@@ -180,7 +180,7 @@ export default function StatusPengirimanPage() {
 
       <header className="top">
         <a className="brand" href="/member"><span className="mark" />OXYGEN GEAR</a>
-        <a className="back" href="/pesanan-saya">← Pesanan saya</a>
+        <a className="back" href="/member">← Member</a>
       </header>
 
       <section className="content">
