@@ -10,14 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch homepage CTA image sizing
+      - name: Make Oxygen Index image exactly match CTA box
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('app/page.jsx')
           s=p.read_text()
-          old='.hero-index-btn img{display:block!important;position:static!important;inset:auto!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important;opacity:1!important;filter:none!important;pointer-events:none;-webkit-user-drag:none;user-select:none}'
-          new='.hero-index-btn img{display:block!important;position:static!important;inset:auto!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:fill!important;object-position:center!important;opacity:1!important;filter:none!important;pointer-events:none;-webkit-user-drag:none;user-select:none}'
+          old='.hero-index-btn img{display:block!important;position:static!important;inset:auto!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:fill!important;object-position:center!important;opacity:1!important;filter:none!important;pointer-events:none;-webkit-user-drag:none;user-select:none}'
+          new='.hero-index-btn img{display:block!important;position:static!important;inset:auto!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:fill!important;object-position:center!important;opacity:1!important;filter:none!important;image-rendering:auto!important;pointer-events:none;-webkit-user-drag:none;user-select:none}'
           if old not in s:
               raise SystemExit('hero-index image CSS target not found')
           s=s.replace(old,new,1)
@@ -26,5 +26,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/page.jsx .github/workflows/fix-hero-index-cta.yml
-          git commit -m 'fix: make Oxygen Index image fill CTA' || exit 0
+          git commit -m 'fix: render Oxygen Index image at exact CTA size' || exit 0
           git push
