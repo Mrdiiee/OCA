@@ -10,21 +10,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Crop Oxygen Index image to fill CTA box
+      - name: Keep Oxygen Index CTA and fix mobile ticker wrapping
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('app/page.jsx')
           s=p.read_text()
-          old='.hero-index-btn img{display:block!important;position:static!important;inset:auto!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:fill!important;object-position:center!important;opacity:1!important;filter:none!important;image-rendering:auto!important;pointer-events:none;-webkit-user-drag:none;user-select:none}'
-          new='.hero-index-btn img{display:block!important;position:static!important;inset:auto!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;opacity:1!important;filter:none!important;image-rendering:auto!important;pointer-events:none;-webkit-user-drag:none;user-select:none}'
+          old='.hero-index-btn img{display:block!important;position:static!important;inset:auto!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;opacity:1!important;filter:none!important;image-rendering:auto!important;pointer-events:none;-webkit-user-drag:none;user-select:none}'
           if old not in s:
               raise SystemExit('hero-index image CSS target not found')
-          s=s.replace(old,new,1)
+          ticker_old='@media(max-width:650px){.hero-actions .hero-collection-btn,.hero-actions .hero-index-btn{width:100%;height:48px;min-height:48px}'
+          ticker_new='@media(max-width:650px){.ticker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));white-space:normal;overflow:hidden}.ticker span{min-width:0;text-align:center;padding:14px 10px;line-height:1.35;display:flex;align-items:center;justify-content:center}.ticker span:last-child{grid-column:1/-1}.hero-actions .hero-collection-btn,.hero-actions .hero-index-btn{width:100%;height:48px;min-height:48px}'
+          if ticker_old not in s:
+              raise SystemExit('mobile ticker CSS target not found')
+          s=s.replace(ticker_old,ticker_new,1)
           p.write_text(s)
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/page.jsx .github/workflows/fix-hero-index-cta.yml
-          git commit -m 'fix: crop Oxygen Index image to CTA bounds' || exit 0
+          git commit -m 'fix: wrap mobile ticker items into rows' || exit 0
           git push
