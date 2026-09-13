@@ -148,7 +148,7 @@ export default function EventMenu() {
 
   return (
     <style dangerouslySetInnerHTML={{
-      __html: '.context-nav-member .context-nav-item[href="/pesanan-saya"],.context-nav-member .context-nav-item[href="/status-pengiriman"]{display:none!important}',
+      __html: '.context-nav-member .context-nav-item[href="/pesanan-saya"],.context-nav-member .context-nav-item[href="/status-pengiriman"]{display:none!important}.shell .topbar{display:none!important}.shell .ticker span:last-child{display:none!important}',
     }} />
   );
 }
