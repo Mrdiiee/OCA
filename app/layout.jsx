@@ -1,4 +1,3 @@
-import Script from "next/script";
 import AccountMenu from "./account-menu";
 import EventMenu from "./event-menu";
 import MemberMenu from "./member-menu";
@@ -11,8 +10,6 @@ export const metadata = {
   openGraph: { title: "Oxygen Gear Equipment", description: "Peralatan teknis dan jasa private trip untuk mereka yang pergi lebih jauh.", url: "https://www.oxygengear.store/", siteName: "Oxygen Gear Equipment", locale: "id_ID", type: "website" },
   twitter: { card: "summary_large_image", title: "Oxygen Gear Equipment", description: "Peralatan teknis dan jasa private trip untuk mereka yang pergi lebih jauh." },
 };
-
-const midtransSnapUrl = process.env.VERCEL_ENV === "production" ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js";
 
 const themeCss = `
 :root{--og-bg:#fff;--og-surface:#f7f7f5;--og-surface-2:#f2f2f0;--og-text:#111;--og-muted:#6b6b6b;--og-line:#e5e5e5;--og-accent:#e1261c;--og-max:1440px}
@@ -52,5 +49,5 @@ button,input,textarea,select{font-family:Arial,Helvetica,sans-serif}
 `;
 
 export default function RootLayout({ children }) {
-  return (<html lang="id"><body>{children}<AccountMenu /><EventMenu /><MemberMenu /><style dangerouslySetInnerHTML={{ __html: themeCss }} /><Script src={midtransSnapUrl} data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY} strategy="afterInteractive" /></body></html>);
+  return (<html lang="id"><body>{children}<AccountMenu /><EventMenu /><MemberMenu /><style dangerouslySetInnerHTML={{ __html: themeCss }} /></body></html>);
 }
