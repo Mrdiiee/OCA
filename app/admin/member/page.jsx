@@ -1,190 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
-const statusLabels = { active: 'AKTIF', inactive: 'NONAKTIF', expired: 'EXPIRED' };
+const LABELS={pendakian_bersama:'Pendakian Bersama',ekspedisi:'Ekspedisi',private_trip:'Private Trip',community_event:'Event Komunitas',volunteer_crew:'Volunteer / Crew',social:'Kegiatan Sosial',environment:'Kegiatan Lingkungan',other:'Aktivitas Lain',product_purchase:'Pembelian Produk'};
+const JOURNEY=new Set(['pendakian_bersama','ekspedisi','private_trip','community_event']);
 
-export default function AdminMemberPage() {
-  const [codes, setCodes] = useState([]);
-  const [form, setForm] = useState({ memberName: '', eventName: '', eventDate: '', benefits: '' });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [newCode, setNewCode] = useState(null);
-
-  async function loadCodes() {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch('/api/admin/member-codes', { cache: 'no-store' });
-      const data = await response.json();
-      if (response.status === 401 || response.status === 403) {
-        window.location.href = '/admin/login';
-        return;
-      }
-      if (!response.ok) throw new Error(data.error || 'Kode gagal dimuat.');
-      setCodes(data.memberCodes || []);
-    } catch (err) {
-      setError(err.message || 'Kode gagal dimuat.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { loadCodes(); }, []);
-
-  async function createCode(event) {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    setMessage('');
-    setNewCode(null);
-    try {
-      const response = await fetch('/api/admin/member-codes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await response.json();
-      if (response.status === 401 || response.status === 403) {
-        window.location.href = '/admin/login';
-        return;
-      }
-      if (!response.ok) throw new Error(data.error || 'Kode gagal dibuat.');
-      setNewCode(data.memberCode);
-      setMessage('Kode member berhasil dibuat.');
-      setForm({ memberName: '', eventName: '', eventDate: '', benefits: '' });
-      await loadCodes();
-    } catch (err) {
-      setError(err.message || 'Kode gagal dibuat.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function changeStatus(id, status) {
-    setError('');
-    try {
-      const response = await fetch('/api/admin/member-codes', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status }),
-      });
-      const data = await response.json();
-      if (response.status === 401 || response.status === 403) {
-        window.location.href = '/admin/login';
-        return;
-      }
-      if (!response.ok) throw new Error(data.error || 'Status gagal diperbarui.');
-      await loadCodes();
-    } catch (err) {
-      setError(err.message || 'Status gagal diperbarui.');
-    }
-  }
-
-  async function copyCode(code) {
-    try {
-      await navigator.clipboard.writeText(code);
-      setMessage(`Kode ${code} berhasil disalin.`);
-    } catch {
-      setMessage(`Salin kode ini: ${code}`);
-    }
-  }
-
-  return (
-    <main style={styles.page}>
-      <div style={styles.shell}>
-        <header style={styles.header}>
-          <div>
-            <div style={styles.kicker}>OXYGEN GEAR / ADMIN</div>
-            <h1 style={styles.title}>MEMBER</h1>
-            <p style={styles.sub}>Buat dan kelola kode member peserta event.</p>
-          </div>
-          <nav style={styles.nav}>
-            <Link href="/admin" style={styles.link}>ADMIN</Link>
-            <Link href="/admin/pengiriman" style={styles.link}>PENGIRIMAN</Link>
-            <Link href="/member" style={styles.link}>LIHAT MEMBER</Link>
-          </nav>
-        </header>
-
-        <section style={styles.card}>
-          <div style={styles.sectionTitle}>BUAT KODE MEMBER</div>
-          <form onSubmit={createCode} style={styles.form}>
-            <label style={styles.label}>NAMA PESERTA<input required value={form.memberName} onChange={(e) => setForm({ ...form, memberName: e.target.value })} placeholder="Contoh: Budi Santoso" style={styles.input} /></label>
-            <label style={styles.label}>EVENT<input required value={form.eventName} onChange={(e) => setForm({ ...form, eventName: e.target.value })} placeholder="Contoh: Pendakian Papandayan" style={styles.input} /></label>
-            <label style={styles.label}>TANGGAL EVENT<input type="date" value={form.eventDate} onChange={(e) => setForm({ ...form, eventDate: e.target.value })} style={styles.input} /></label>
-            <label style={styles.label}>BENEFIT <span style={styles.hint}>(pisahkan dengan koma)</span><input value={form.benefits} onChange={(e) => setForm({ ...form, benefits: e.target.value })} placeholder="Harga khusus member, Akses agenda event" style={styles.input} /></label>
-            <button disabled={saving} style={styles.button}>{saving ? 'MEMBUAT...' : 'BUAT KODE MEMBER'}</button>
-          </form>
-
-          {newCode && (
-            <div style={styles.generated}>
-              <div style={styles.generatedLabel}>KODE MEMBER BARU</div>
-              <div style={styles.code}>{newCode.code}</div>
-              <div style={styles.generatedInfo}>{newCode.member_name} · {newCode.event_name}</div>
-              <button onClick={() => copyCode(newCode.code)} style={styles.secondary}>SALIN KODE</button>
-            </div>
-          )}
-          {message && <div style={styles.message}>{message}</div>}
-          {error && <div style={styles.error}>{error}</div>}
-        </section>
-
-        <section style={styles.card}>
-          <div style={styles.sectionHead}><div style={styles.sectionTitle}>DAFTAR KODE</div><button onClick={loadCodes} style={styles.refresh}>REFRESH</button></div>
-          {loading ? <p style={styles.muted}>Memuat...</p> : codes.length === 0 ? <p style={styles.muted}>Belum ada kode member.</p> : (
-            <div style={styles.list}>
-              {codes.map((item) => (
-                <article key={item.id} style={styles.row}>
-                  <div style={styles.codeSmall}>{item.code}</div>
-                  <div style={styles.details}><strong>{item.member_name}</strong><span>{item.event_name}{item.event_date ? ` · ${item.event_date}` : ''}</span>{item.benefits?.length > 0 && <span>Benefit: {item.benefits.join(' · ')}</span>}</div>
-                  <div style={styles.actions}><span style={{ ...styles.status, ...(item.status === 'active' ? styles.active : item.status === 'expired' ? styles.expired : styles.inactive) }}>{statusLabels[item.status]}</span><button onClick={() => copyCode(item.code)} style={styles.smallButton}>SALIN</button>{item.status === 'active' ? <button onClick={() => changeStatus(item.id, 'inactive')} style={styles.smallButton}>NONAKTIFKAN</button> : <button onClick={() => changeStatus(item.id, 'active')} style={styles.smallButton}>AKTIFKAN</button>}</div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
-  );
+export default function AdminMemberPage(){
+ const [data,setData]=useState({users:[],activities:[]}); const [selected,setSelected]=useState(''); const [form,setForm]=useState({activityType:'pendakian_bersama',title:'',description:'',activityDate:'',role:'',verified:true}); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState(''); const [message,setMessage]=useState(''); const [query,setQuery]=useState('');
+ async function load(){setLoading(true);setError('');try{const r=await fetch('/api/admin/member',{cache:'no-store'});const d=await r.json();if(r.status===401||r.status===403){window.location.href='/admin/login';return}if(!r.ok)throw new Error(d.error||'Data Member gagal dimuat.');setData(d);if(!selected&&d.users?.[0])setSelected(d.users[0].id)}catch(e){setError(e.message||'Data Member gagal dimuat.')}finally{setLoading(false)}}
+ useEffect(()=>{load()},[]);
+ const users=useMemo(()=>data.users.filter(u=>`${u.full_name} ${u.email}`.toLowerCase().includes(query.toLowerCase())),[data.users,query]);
+ const activities=useMemo(()=>data.activities.filter(a=>a.user_id===selected),[data.activities,selected]);
+ const selectedUser=data.users.find(u=>u.id===selected); const verified=activities.filter(a=>a.verified); const qualifying=verified.filter(a=>a.activity_type!=='product_purchase'); const isMember=Boolean(selectedUser?.member?.status==='active');
+ async function save(e){e.preventDefault();if(!selected)return;setSaving(true);setError('');setMessage('');try{const r=await fetch('/api/admin/member',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,userId:selected})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Aktivitas gagal disimpan.');setMessage('Aktivitas berhasil dicatat.');setForm({...form,title:'',description:'',activityDate:'',role:''});await load()}catch(e){setError(e.message||'Aktivitas gagal disimpan.')}finally{setSaving(false)}}
+ async function verify(id,value){setError('');try{const r=await fetch('/api/admin/member',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,verified:value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Verifikasi gagal.');setMessage(value?'Aktivitas diverifikasi.':'Verifikasi aktivitas dibatalkan.');await load()}catch(e){setError(e.message||'Verifikasi gagal.')}}
+ return <main style={s.page}><div style={s.shell}>
+  <header style={s.header}><div><div style={s.kicker}>OXYGEN GEAR / ADMIN / MEMBER</div><h1 style={s.title}>MEMBER.</h1><p style={s.sub}>Kelola perjalanan, verifikasi aktivitas, dan status Member Oxygen Gear.</p></div><nav style={s.nav}><Link href="/admin" style={s.link}>ADMIN</Link><Link href="/admin/oxygen-index" style={s.link}>OXYGEN INDEX</Link><Link href="/member" style={s.link}>LIHAT MEMBER</Link></nav></header>
+  {error&&<div style={s.error}>{error}</div>}{message&&<div style={s.message}>{message}</div>}
+  <section style={s.card}><div style={s.head}><div><div style={s.section}>PILIH AKUN</div><p style={s.hint}>Member berasal dari akun terdaftar. Status Member aktif setelah minimal satu aktivitas yang diverifikasi.</p></div><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cari nama / email" style={s.search}/></div>{loading?<p style={s.muted}>Memuat...</p>:<div style={s.userGrid}>{users.map(u=><button key={u.id} onClick={()=>setSelected(u.id)} style={{...s.user, ...(u.id===selected?s.userActive:{})}}><strong>{u.full_name}</strong><span>{u.email}</span><b>{u.member?.status==='active'?'MEMBER AKTIF':'BELUM MEMBER'}</b></button>)}</div>}</section>
+  {selectedUser&&<><section style={s.overview}><div><span style={s.red}>STATUS MEMBER</span><strong style={s.big}>{isMember?'AKTIF':'BELUM MEMBER'}</strong><small>{isMember&&selectedUser.member?.member_since?`Sejak ${new Date(selectedUser.member.member_since).toLocaleDateString('id-ID')}`:'Minimal 1 aktivitas non-pembelian yang diverifikasi'}</small></div><div><span style={s.red}>AKTIVITAS</span><strong style={s.big}>{activities.length}</strong><small>{qualifying.length} aktivitas kualifikasi · {verified.filter(a=>a.activity_type==='product_purchase').length} support</small></div><div><span style={s.red}>TERVERIFIKASI</span><strong style={s.big}>{verified.length}</strong><small>{activities.length-verified.length} menunggu verifikasi</small></div></section>
+  <section style={s.card}><div style={s.section}>CATAT AKTIVITAS</div><form onSubmit={save} style={s.form}><label style={s.label}>JENIS<select value={form.activityType} onChange={e=>setForm({...form,activityType:e.target.value})} style={s.input}>{Object.entries(LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label style={s.label}>JUDUL<input required value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Contoh: Pendakian Papandayan" style={s.input}/></label><label style={s.label}>TANGGAL<input type="date" value={form.activityDate} onChange={e=>setForm({...form,activityDate:e.target.value})} style={s.input}/></label><label style={s.label}>PERAN<input value={form.role} onChange={e=>setForm({...form,role:e.target.value})} placeholder="Peserta / Crew / Volunteer" style={s.input}/></label><label style={{...s.label,gridColumn:'1/-1'}}>CATATAN<textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} rows={3} style={s.input}/></label><label style={s.check}><input type="checkbox" checked={form.verified} onChange={e=>setForm({...form,verified:e.target.checked})}/> VERIFIKASI SEKARANG</label><button disabled={saving} style={s.button}>{saving?'MENYIMPAN...':'SIMPAN AKTIVITAS'}</button></form></section>
+  <section style={s.card}><div style={s.head}><div><div style={s.section}>RIWAYAT AKTIVITAS</div><p style={s.hint}>Hanya aktivitas terverifikasi yang tampil di halaman Member.</p></div></div>{activities.length===0?<p style={s.muted}>Belum ada aktivitas untuk akun ini.</p>:<div>{activities.map(a=><article key={a.id} style={s.row}><div><strong>{a.title}</strong><span>{LABELS[a.activity_type]||a.activity_type}{a.activity_date?` · ${a.activity_date}`:''}</span>{a.role&&<small>Peran: {a.role}</small>}</div><div style={s.rowStatus}>{a.verified?'TERVERIFIKASI':'MENUNGGU'}</div><button onClick={()=>verify(a.id,!a.verified)} style={s.small}>{a.verified?'BATAL VERIFIKASI':'VERIFIKASI'}</button></article>)}</div>}</section></>}
+  <footer style={s.footer}><Link href="/admin" style={s.link}>← ADMIN</Link><Link href="/admin/oxygen-index" style={s.link}>OXYGEN INDEX →</Link></footer>
+ </div></main>
 }
-
-const styles = {
-  page: { minHeight: '100vh', background: '#0b0b0b', color: '#f4f4f4', padding: '42px 20px', fontFamily: 'Arial, sans-serif' },
-  shell: { maxWidth: 1100, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', gap: 24, alignItems: 'flex-end', marginBottom: 28, borderBottom: '1px solid #292929', paddingBottom: 22 },
-  kicker: { fontSize: 11, letterSpacing: 2.5, color: '#a3a3a3', marginBottom: 8 },
-  title: { margin: 0, fontSize: 42, letterSpacing: 1 },
-  sub: { margin: '8px 0 0', color: '#9d9d9d' },
-  nav: { display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'flex-end' },
-  link: { color: '#fff', fontSize: 11, letterSpacing: 1.2, textDecoration: 'none' },
-  card: { background: '#111', border: '1px solid #292929', padding: 24, marginBottom: 18 },
-  sectionTitle: { fontSize: 12, letterSpacing: 2, fontWeight: 700, marginBottom: 18 },
-  form: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 },
-  label: { display: 'grid', gap: 7, fontSize: 10, letterSpacing: 1.4, color: '#bdbdbd' },
-  hint: { letterSpacing: 0, color: '#777' },
-  input: { width: '100%', boxSizing: 'border-box', background: '#0b0b0b', border: '1px solid #333', color: '#fff', padding: '13px 12px', fontSize: 14, outline: 'none' },
-  button: { gridColumn: '1 / -1', border: 0, background: '#fff', color: '#000', padding: '14px 18px', fontWeight: 700, letterSpacing: 1, cursor: 'pointer' },
-  generated: { marginTop: 22, padding: 20, border: '1px solid #fff', textAlign: 'center' },
-  generatedLabel: { fontSize: 10, letterSpacing: 2, color: '#aaa' },
-  code: { fontSize: 30, fontWeight: 800, letterSpacing: 3, margin: '10px 0' },
-  generatedInfo: { color: '#aaa', marginBottom: 14 },
-  secondary: { background: 'transparent', border: '1px solid #555', color: '#fff', padding: '9px 14px', cursor: 'pointer' },
-  message: { marginTop: 14, color: '#b8ffb8', fontSize: 13 },
-  error: { marginTop: 14, color: '#ff8e8e', fontSize: 13 },
-  sectionHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  refresh: { background: 'transparent', border: '1px solid #444', color: '#fff', padding: '7px 11px', cursor: 'pointer', fontSize: 10, letterSpacing: 1 },
-  muted: { color: '#777' },
-  list: { display: 'grid', gap: 10 },
-  row: { borderTop: '1px solid #252525', paddingTop: 15, display: 'grid', gridTemplateColumns: '180px 1fr auto', gap: 16, alignItems: 'center' },
-  codeSmall: { fontWeight: 800, letterSpacing: 1.5, fontSize: 13 },
-  details: { display: 'grid', gap: 5, color: '#aaa', fontSize: 12 },
-  detailsStrong: { color: '#fff' },
-  actions: { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', justifyContent: 'flex-end' },
-  status: { padding: '5px 7px', fontSize: 9, letterSpacing: 1, fontWeight: 700 },
-  active: { background: '#18351e', color: '#9cffaa' },
-  inactive: { background: '#333', color: '#aaa' },
-  expired: { background: '#3b2119', color: '#ffb09a' },
-  smallButton: { background: 'transparent', border: '1px solid #444', color: '#ddd', padding: '6px 8px', fontSize: 9, letterSpacing: 1, cursor: 'pointer' },
-};
+const s={page:{minHeight:'100vh',background:'#0b0b0a',color:'#f5f5f3',padding:'32px 20px 70px',fontFamily:'Arial,Helvetica,sans-serif'},shell:{maxWidth:1180,margin:'0 auto'},header:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:24,borderBottom:'1px solid #302e29',paddingBottom:24,marginBottom:18},kicker:{font:'10px monospace',letterSpacing:2,color:'#888',marginBottom:8},title:{fontSize:'clamp(54px,9vw,92px)',lineHeight:.85,letterSpacing:-4,margin:0},sub:{color:'#aaa',maxWidth:650,lineHeight:1.6,margin:'12px 0 0'},nav:{display:'flex',gap:16,flexWrap:'wrap',justifyContent:'flex-end'},link:{color:'#fff',textDecoration:'none',font:'10px monospace',letterSpacing:1},error:{padding:14,border:'1px solid #7c4b47',background:'#17100f',color:'#ff8178',marginBottom:18,fontSize:12},message:{padding:14,border:'1px solid #394c3b',background:'#101710',color:'#9cffaa',marginBottom:18,fontSize:12},card:{background:'#11110f',border:'1px solid #302e29',padding:24,marginBottom:18},head:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:18,paddingBottom:18,borderBottom:'1px solid #25231f'},section:{fontSize:12,fontWeight:700,letterSpacing:2},hint:{fontSize:11,color:'#777',lineHeight:1.5,margin:'7px 0 0'},search:{width:260,background:'#0b0b0a',border:'1px solid #444',color:'#fff',padding:'11px 12px',outline:'none'},userGrid:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginTop:16},user:{textAlign:'left',background:'#0b0b0a',border:'1px solid #302e29',color:'#eee',padding:16,minHeight:120,cursor:'pointer',display:'flex',flexDirection:'column',gap:7},userActive:{borderColor:'#e1261c',background:'#17100f'},userSpan:{color:'#777'},userGridSpan:{color:'#777'},overview:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:18},overviewItem:{background:'#11110f'},overviewStrong:{fontSize:32},red:{display:'block',font:'9px monospace',color:'#e1261c',letterSpacing:1.5,marginBottom:8},big:{display:'block',fontSize:30,letterSpacing:-1},overviewSmall:{display:'block'},form:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginTop:18},label:{display:'grid',gap:7,font:'10px monospace',letterSpacing:1,color:'#aaa'},input:{width:'100%',boxSizing:'border-box',background:'#0b0b0a',border:'1px solid #333',color:'#fff',padding:'12px',font:'13px Arial'},check:{display:'flex',alignItems:'center',gap:8,font:'10px monospace',color:'#aaa'},button:{border:0,background:'#fff',color:'#111',padding:13,fontWeight:800,cursor:'pointer'},row:{display:'grid',gridTemplateColumns:'1fr auto auto',gap:16,alignItems:'center',padding:'15px 0',borderBottom:'1px solid #25231f'},row span:{display:'block',color:'#999',fontSize:11,marginTop:5},row small:{display:'block',color:'#777',fontSize:10,marginTop:4},rowStatus:{font:'9px monospace',color:'#e1261c'},small:{background:'transparent',border:'1px solid #444',color:'#ddd',padding:'8px 10px',font:'9px monospace',cursor:'pointer'},muted:{color:'#777',fontSize:12},footer:{display:'flex',justifyContent:'space-between',paddingTop:16}};
