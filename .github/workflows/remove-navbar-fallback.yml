@@ -17,23 +17,23 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
           p = Path('app/member-menu.jsx')
           s = p.read_text()
 
-          css_pattern = r'\n        /\* SSR NAV FALLBACK:.*?\n        @media\(max-width:420px\)\{.*?\}\n'
-          s2, n_css = re.subn(css_pattern, '\n', s, count=1, flags=re.S)
-          if n_css != 1:
-              raise SystemExit(f'Expected exactly one SSR fallback CSS block, found {n_css}')
+          css_start = s.index('        /* SSR NAV FALLBACK:')
+          css_end = s.index('      `,\n      }} />', css_start)
+          s = s[:css_start] + s[css_end:]
 
-          nav_pattern = r'\n      <nav className=\\"og-ssr-nav-fallback\\".*?\n      </nav>\n'
-          s3, n_nav = re.subn(nav_pattern, '\n', s2, count=1, flags=re.S)
-          if n_nav != 1:
-              raise SystemExit(f'Expected exactly one SSR fallback nav, found {n_nav}')
+          nav_start = s.index('      <nav className="og-ssr-nav-fallback"')
+          nav_end = s.index('      </nav>', nav_start) + len('      </nav>')
+          s = s[:nav_start] + s[nav_end:]
 
-          p.write_text(s3)
-          print('Removed only .og-ssr-nav-fallback CSS and markup.')
+          if 'og-ssr-nav-fallback' in s:
+              raise SystemExit('SSR fallback selector/markup still exists after cleanup')
+
+          p.write_text(s)
+          print('Removed only the SSR fallback CSS and fallback nav markup.')
           PY
 
       - name: Commit fix and remove workflow
