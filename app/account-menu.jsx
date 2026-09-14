@@ -107,7 +107,6 @@ export default function AccountMenu() {
         @media(hover:hover) and (min-width:981px){body:has(.shell .nav-link:nth-child(1):hover) .product-hover-menu,body:has(.product-hover-menu:hover) .product-hover-menu,body:has(.shell .nav-link:nth-child(1):focus-visible) .product-hover-menu{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0)}.shell .nav-link::after{display:none!important}}
         .product-hover-inner{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:28px 0 32px}.product-hover-heading{display:grid;grid-template-columns:180px 1fr auto;align-items:end;gap:24px;padding-bottom:20px;border-bottom:1px solid #e5e5e5}.product-hover-heading span,.product-hover-label{color:#e1261c;font:700 10px/1.4 monospace;letter-spacing:.1em}.product-hover-heading strong{color:#111;font-size:30px;letter-spacing:-.04em}.product-hover-heading a{color:#111;font-size:11px;font-weight:800;text-decoration:none}.product-hover-heading a:hover{color:#e1261c}.product-hover-columns{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:24px;padding-top:24px}.product-hover-group{display:grid;gap:10px;align-content:start}.product-hover-group a{color:#222;font-size:13px;font-weight:600;text-decoration:none;width:max-content}.product-hover-group a:hover{color:#e1261c;text-decoration:underline;text-underline-offset:4px}
 
-        /* Product listing filter polish: uses the existing functional filters. */
         .page .tools{align-items:stretch;gap:24px;margin:34px 0 0;padding:18px;border:1px solid #2e2c28;background:#11100f;box-sizing:border-box}
         .page .filters{display:flex;gap:8px;flex:1;align-items:center;flex-wrap:wrap;overflow:visible;padding:0}
         .page .filters::before{content:'FILTER KATEGORI';display:block;width:100%;color:#777;font:700 10px/1 monospace;letter-spacing:.14em;margin-bottom:3px}
@@ -117,14 +116,22 @@ export default function AccountMenu() {
         .page .cartButton{align-self:end;min-width:170px;min-height:40px}
         .page .subfilters{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin:0 0 42px;padding:14px 18px 17px;border:1px solid #2e2c28;border-top:0;background:#0f0e0d}
         .page .subfilters::before{content:'SUBKATEGORI';color:#666;font:700 9px/1 monospace;letter-spacing:.14em;margin-right:4px}
-        .page .subfilter{color:#777;padding:4px 0;margin:0;border:0;background:transparent;font-size:11px;transition:color .15s ease}
-        .page .subfilter:hover{color:#fff}.page .subfilter.active{color:#fff;text-decoration:underline;text-underline-offset:6px}
+        .page .subfilter{color:#777;padding:4px 0;margin:0;border:0;background:transparent;font-size:11px;transition:color .15s ease}.page .subfilter:hover{color:#fff}.page .subfilter.active{color:#fff;text-decoration:underline;text-underline-offset:6px}
         .page .categoryHead{padding-bottom:12px;border-bottom:1px solid #24221f}.page .categoryTitle{letter-spacing:-.03em}.page .categoryMeta{font-family:monospace;letter-spacing:.08em}
         .page .empty-filter{margin-top:8px;background:#11100f}
         @media(max-width:700px){.page .tools{padding:14px;gap:14px}.page .filters::before{margin-bottom:5px}.page .filter{min-height:38px;padding:0 12px}.page .cartButton{width:100%;min-width:0}.page .subfilters{gap:14px;padding:14px}.page .subfilters::before{width:100%;margin-bottom:0}.page .categoryHead{align-items:center}}
 
         .account-logout{position:fixed;left:18px;bottom:18px;z-index:9998;border:1px solid #2e2c28;background:rgba(11,11,10,.94);color:#f7f6f3;padding:11px 14px;font:700 10px/1 monospace;letter-spacing:.08em;cursor:pointer;backdrop-filter:blur(8px)}.account-logout:hover:not(:disabled){border-color:#e1261c;color:#e1261c}.account-logout:disabled{opacity:.55;cursor:wait}
         @media(max-width:980px){.product-hover-menu{display:none}}
+
+        /* Keep the original brand and utility icons visible underneath the SSR navigation fallback. */
+        .og-ssr-nav-fallback{background:transparent!important;border-bottom:0!important;backdrop-filter:none!important}
+        .og-ssr-nav-fallback .og-ssr-links{background:rgba(255,255,255,.98);padding:0 22px;box-sizing:border-box;border-bottom:1px solid #e5e5e5;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+        .og-ssr-nav-fallback .og-ssr-actions{background:transparent!important;padding-left:8px!important}
+        .og-ssr-nav-fallback .og-ssr-actions>a.og-ssr-action{display:none!important}
+        .og-ssr-nav-fallback .og-ssr-menu{background:#fff;border-radius:10px;pointer-events:auto}
+        .og-ssr-nav-fallback .og-ssr-menu summary{background:#fff;border-radius:10px}
+        @media(max-width:980px){.og-ssr-nav-fallback .og-ssr-actions{background:transparent!important}.og-ssr-nav-fallback .og-ssr-menu{background:#fff;border-radius:10px}.og-ssr-nav-fallback .og-ssr-panel{top:76px}}
       `}</style>
     </>
   );
