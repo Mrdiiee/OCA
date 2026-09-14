@@ -31,8 +31,9 @@ export default function MemberMenu() {
   }, []);
 
   return (
-    <style dangerouslySetInnerHTML={{
-      __html: `
+    <>
+      <style dangerouslySetInnerHTML={{
+        __html: `
         /* OXYGEN GEAR — PROFESSIONAL UI POLISH */
         :root{--og-black:#101010;--og-red:#e1261c;--og-gray:#6b6b6b;--og-line:#e7e7e4;--og-soft:#f6f6f3;--og-radius:18px}
         html{scroll-behavior:smooth}
@@ -137,7 +138,67 @@ export default function MemberMenu() {
           .shell .icon-btn{width:29px!important;height:29px!important;min-width:29px!important}
           .shell .og-menu-trigger{width:33px!important}
         }
+
+        /* SSR NAV FALLBACK: the correct navigation exists in the initial HTML, so it never depends on refresh/hydration timing. */
+        .og-ssr-nav-fallback{position:fixed;inset:0 0 auto 0;height:76px;background:rgba(255,255,255,.98);border-bottom:1px solid #e5e5e5;z-index:10050;display:flex;align-items:center;justify-content:center;pointer-events:none;box-sizing:border-box;backdrop-filter:blur(16px)}
+        .og-ssr-nav-fallback .og-ssr-links{display:flex;align-items:center;justify-content:center;gap:30px;height:100%;pointer-events:auto}
+        .og-ssr-nav-fallback .og-ssr-link{display:flex;align-items:center;height:100%;padding:0 2px;color:#111;text-decoration:none;font:800 10px/1 Arial,sans-serif;letter-spacing:.075em;text-transform:uppercase;white-space:nowrap}
+        .og-ssr-nav-fallback .og-ssr-link:hover{color:var(--og-red)}
+        .og-ssr-nav-fallback .og-ssr-actions{position:absolute;right:20px;top:0;height:100%;display:flex;align-items:center;gap:4px;padding-left:12px;background:rgba(255,255,255,.98);pointer-events:auto}
+        .og-ssr-nav-fallback .og-ssr-action{width:38px;height:38px;display:grid;place-items:center;color:#111;text-decoration:none;border:0;background:transparent;border-radius:50%;cursor:pointer}
+        .og-ssr-nav-fallback .og-ssr-action:hover{color:var(--og-red);background:#f3f3f0}
+        .og-ssr-nav-fallback .og-ssr-menu{position:relative;height:100%;display:flex;align-items:center}
+        .og-ssr-nav-fallback .og-ssr-menu summary{list-style:none}
+        .og-ssr-nav-fallback .og-ssr-menu summary::-webkit-details-marker{display:none}
+        .og-ssr-nav-fallback .og-ssr-panel{position:absolute;right:0;top:58px;width:370px;max-width:calc(100vw - 28px);max-height:calc(100vh - 80px);overflow:auto;background:#fff;border:1px solid #dededb;border-top:3px solid #111;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.16);padding:8px;box-sizing:border-box}
+        .og-ssr-nav-fallback .og-ssr-panel a{display:flex;align-items:center;min-height:48px;padding:13px 12px;border-radius:10px;color:#111;text-decoration:none;font:700 11px/1.25 Arial,sans-serif;letter-spacing:.04em;box-sizing:border-box}
+        .og-ssr-nav-fallback .og-ssr-panel a:hover{background:#f5f5f2;color:var(--og-red)}
+        .og-ssr-nav-fallback .og-ssr-panel .index{background:#111;color:#fff}
+        .og-ssr-nav-fallback .og-ssr-panel .index:hover{background:var(--og-red);color:#fff}
+        .og-ssr-nav-fallback .grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ececea;border-radius:12px;background:#fafaf8;overflow:hidden;margin:3px 0}
+        .og-ssr-nav-fallback .grid a{border-radius:0}
+        .og-ssr-nav-fallback .grid a:nth-child(odd){border-right:1px solid #ececea}
+        .og-ssr-nav-fallback .grid a:nth-child(-n+2){border-bottom:1px solid #ececea}
+        .og-ssr-nav-fallback .order{border:1px solid #ececea;background:#fafaf8}
+        .og-ssr-nav-fallback .order span{margin-left:4px;font-weight:700;letter-spacing:.03em}
+        .og-ssr-nav-fallback .mobile-hide{display:block}
+        @media(max-width:980px){
+          .og-ssr-nav-fallback{height:68px}
+          .og-ssr-nav-fallback .og-ssr-links{display:none}
+          .og-ssr-nav-fallback .og-ssr-actions{right:8px;height:68px;padding-left:8px}
+          .og-ssr-nav-fallback .og-ssr-panel{position:fixed;top:76px;left:8px;right:8px;width:auto;max-width:none;max-height:calc(100dvh - 84px)}
+        }
+        @media(max-width:600px){.og-ssr-nav-fallback .og-ssr-actions{right:5px}.og-ssr-nav-fallback .og-ssr-action{width:31px;height:31px}.og-ssr-nav-fallback .og-ssr-panel{top:72px}}
+        @media(max-width:420px){.og-ssr-nav-fallback .grid{grid-template-columns:1fr}.og-ssr-nav-fallback .grid a{border-right:0!important;border-bottom:1px solid #ececea!important}.og-ssr-nav-fallback .grid a:last-child{border-bottom:0!important}}
       `,
-    }} />
+      }} />
+
+      <nav className="og-ssr-nav-fallback" aria-label="Navigasi Oxygen Gear">
+        <div className="og-ssr-links">
+          <a className="og-ssr-link" href="/produk">PRODUK</a>
+          <a className="og-ssr-link" href="/event">EVENT</a>
+          <a className="og-ssr-link" href="/member">MEMBER</a>
+          <a className="og-ssr-link" href="/tentang">TENTANG</a>
+        </div>
+        <div className="og-ssr-actions">
+          <a className="og-ssr-action" href="/informasi-user" aria-label="Akun"><span aria-hidden="true" style={{fontSize:20}}>♙</span></a>
+          <details className="og-ssr-menu">
+            <summary className="og-ssr-action" aria-label="Buka menu navigasi"><span aria-hidden="true" style={{fontSize:21,lineHeight:1}}>☰</span></summary>
+            <div className="og-ssr-panel">
+              <a href="/informasi-user">Informasi Akun</a>
+              <a className="index" href="/oxygen-index">OXYGEN INDEX</a>
+              <div className="grid">
+                <a href="/produk">PRODUK</a>
+                <a href="/event">EVENT</a>
+                <a href="/member">MEMBER</a>
+                <a href="/tentang">TENTANG</a>
+              </div>
+              <a className="order" href="/pesanan-saya">PESANAN SAYA <span>· STATUS PENGIRIMAN</span></a>
+              <a href="/kontak">KONTAK</a>
+            </div>
+          </details>
+        </div>
+      </nav>
+    </>
   );
 }
