@@ -1,0 +1,17 @@
+name: Cleanup temp workflows
+on:
+  push:
+    branches: [main]
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/trigger-homepage-event-wire.yml .github/workflows/verify-page-wire.yml .github/workflows/cleanup-temp-workflows.yml 2>/dev/null || true
+          git commit -m 'Clean up temporary workflows' || true
+          git push || true
