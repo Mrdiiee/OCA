@@ -1,0 +1,33 @@
+name: Finalize static navbar styling
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add static event styling
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/page.jsx')
+          s=p.read_text()
+          if '.static-event-nav{' not in s:
+            marker='.nav-link:hover,.footer-link:hover{color:var(--red)}'
+            css='.static-event-nav{position:relative;height:76px;display:flex;align-items:center}.static-event-nav .event-nav-trigger{height:76px;display:flex;align-items:center;gap:5px;color:var(--soft);padding:0!important}.event-nav-arrow{font-size:12px;line-height:1;transform:translateY(-1px)}.static-event-menu{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);width:330px;padding:10px;background:#fff;border:1px solid #e5e5e5;border-top:2px solid var(--red);box-shadow:0 18px 50px rgba(0,0,0,.13);z-index:120}.static-event-nav:hover .static-event-menu,.static-event-nav:focus-within .static-event-menu{display:block}.static-event-menu .event-nav-item{display:block;padding:14px 13px;color:#222;border-bottom:1px solid #efefef}.static-event-menu .event-nav-item:last-child{border-bottom:0}.static-event-menu .event-nav-item strong{display:block;font-size:11px;letter-spacing:.06em}.static-event-menu .event-nav-item span{display:block;margin-top:5px;color:#777;font-size:11px;line-height:1.45}.static-event-menu .event-nav-item:hover{background:#f7f7f5;color:var(--red)}'
+            if marker not in s: raise SystemExit('CSS marker missing')
+            s=s.replace(marker,marker+css,1)
+            p.write_text(s)
+          PY
+      - name: Commit and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.jsx .github/workflows/finalize-navbar-css.yml
+          git rm .github/workflows/finalize-navbar-css.yml
+          git commit -m "Finalize stable navbar styling"
+          git push
