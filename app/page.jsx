@@ -11,7 +11,7 @@ const TRIP = {
   id: "private-trip",
   code: "TRIP-PVT",
   name: "Private Trip Papandayan",
-  category: "Trip",
+  category: "Event",
   kind: "Gunung Papandayan · 2D1N",
   price: 1250000,
   image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1400&q=85",
@@ -228,7 +228,7 @@ export default function OxygenGearSite() {
           <div className="category-grid">
             <a className="category" href="/produk"><img src={homepageMedia.homepage_01?.url || "https://images.unsplash.com/photo-1521336575822-6da63fb45455?auto=format&fit=crop&w=900&q=80"} alt="Mountaineering" /><div className="category-copy"><span>01 / ACTIVITY</span><h3>Mountaineering</h3></div></a>
             <a className="category" href="/produk"><img src={homepageMedia.homepage_02?.url || "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=900&q=80"} alt="Trail running" /><div className="category-copy"><span>02 / ACTIVITY</span><h3>Trail Running</h3></div></a>
-            <a className="category" href="/private-trip"><img src={homepageMedia.homepage_03?.url || "https://images.unsplash.com/photo-1464278533981-50106e6176b1?auto=format&fit=crop&w=900&q=80"} alt="Private adventure" /><div className="category-copy"><span>03 / EXPERIENCE</span><h3>Private Trip</h3></div></a>
+            <a className="category" href="/private-trip"><img src={homepageMedia.homepage_03?.url || "https://images.unsplash.com/photo-1464278533981-50106e6176b1?auto=format&fit=crop&w=900&q=80"} alt="Private adventure" /><div className="category-copy"><span>03 / EVENT</span><h3>Private Trip</h3></div></a>
             <a className="category" href="/tentang"><img src={homepageMedia.homepage_04?.url || "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=900&q=80"} alt="Outdoor lifestyle" /><div className="category-copy"><span>04 / LIFESTYLE</span><h3>Outdoor Life</h3></div></a>
           </div>
         </div>
@@ -249,11 +249,11 @@ export default function OxygenGearSite() {
           <div className="feature">
             <div className="feature-image"><img src={TRIP.image} alt="Private Trip Papandayan" /></div>
             <div className="feature-copy">
-              <div className="section-kicker">EXPERIENCE / 02D01N</div>
+              <div className="section-kicker">EVENT / PRIVATE TRIP · 02D01N</div>
               <h3>{TRIP.name}</h3>
               <p>{TRIP.blurb} Kami menangani persiapan perjalanan, briefing, dan pendampingan lapangan untuk kelompok kecil.</p>
               <div className="feature-price">{fmt(TRIP.price)} / orang</div>
-              <div className="hero-actions"><button className="btn" type="button" onClick={() => add(TRIP)}>TAMBAH KE KERANJANG <Icon name="arrow" size={16} /></button><a className="btn ghost" href="/private-trip">DETAIL TRIP</a></div>
+              <div className="hero-actions"><a className="btn" href="/private-trip">LIHAT EVENT <Icon name="arrow" size={16} /></a><a className="btn ghost" href="/private-trip">DETAIL TRIP</a></div>
             </div>
           </div>
         </div>
@@ -275,7 +275,7 @@ export default function OxygenGearSite() {
         <div className="container">
           <div className="footer-top">
             <div><a href="/" className="brand"><span className="brand-mark" />OXYGEN GEAR</a><p className="footer-text" style={{ maxWidth: 380, marginTop: 18 }}>Built for open terrain. Perlengkapan teknis dan pengalaman outdoor untuk perjalanan yang lebih jauh.</p><form className="newsletter" onSubmit={subscribe}><input name="email" type="email" placeholder="Email untuk promo & update" aria-label="Email promo" required /><button type="submit">SUBSCRIBE</button></form></div>
-            <div><div className="footer-head">SHOP</div><a className="footer-link" href="/produk">Produk</a><a className="footer-link" href="/private-trip">Private Trip</a><a className="footer-link" href="/status-pengiriman">Status Pengiriman</a></div>
+            <div><div className="footer-head">SHOP</div><a className="footer-link" href="/produk">Produk</a><a className="footer-link" href="/private-trip">Event · Private Trip</a><a className="footer-link" href="/status-pengiriman">Status Pengiriman</a></div>
             <div><div className="footer-head">INFORMATION</div><a className="footer-link" href="/informasi-user">Informasi User</a><a className="footer-link" href="/tentang">Tentang</a><a className="footer-link" href="/kontak">Kontak</a></div>
             <div><div className="footer-head">FOLLOW</div><a className="footer-link" href="https://www.instagram.com/oxygenmontain/" target="_blank" rel="noopener noreferrer">Instagram</a><a className="footer-link" href="/kontak">Customer Service</a></div>
           </div>
