@@ -1,0 +1,111 @@
+name: Fix navbar hydration without refresh
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Make navbar static at source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          page = Path('app/page.jsx')
+          text = page.read_text()
+          old = '''          <nav className="nav-links">
+            <a className="nav-link" href="/produk">PRODUK</a>
+            <a className="nav-link" href="/private-trip">PRIVATE TRIP</a>
+            <a className="nav-link" href="/tentang">TENTANG</a>
+            <a className="nav-link" href="/kontak">KONTAK</a>
+          </nav>'''
+          new = '''          <nav className="nav-links" aria-label="Navigasi utama">
+            <a className="nav-link" href="/produk">PRODUK</a>
+            <div className="event-nav-wrap static-event-nav">
+              <a className="nav-link event-nav-trigger" href="/event" aria-haspopup="true">EVENT <span className="event-nav-arrow" aria-hidden="true">⌄</span></a>
+              <div className="event-nav-menu static-event-menu">
+                <a href="/event" className="event-nav-item"><strong>SEMUA EVENT</strong><span>Lihat seluruh agenda Oxygen Gear</span></a>
+                <a href="/event#pendakian-bersama" className="event-nav-item"><strong>PENDAKIAN BERSAMA</strong><span>Agenda pendakian komunitas</span></a>
+                <a href="/event#ekspedisi" className="event-nav-item"><strong>EKSPEDISI</strong><span>Perjalanan dan eksplorasi khusus</span></a>
+                <a href="/private-trip" className="event-nav-item"><strong>PRIVATE TRIP</strong><span>Trip eksklusif sesuai tim Anda</span></a>
+              </div>
+            </div>
+            <a className="nav-link" href="/member">MEMBER</a>
+            <a className="nav-link" href="/tentang">TENTANG</a>
+          </nav>'''
+          if old not in text:
+              raise SystemExit('Navbar source block not found')
+          text = text.replace(old, new, 1)
+
+          # Remove the legacy homepage EventMenu DOM mutation effect. Static JSX now owns the nav.
+          start = text.find('  useEffect(() => {\n    const nav = document.querySelector(".nav-links");')
+          if start < 0:
+              raise SystemExit('Legacy homepage event mutation effect not found')
+          end = text.find('\n\n  return (', start)
+          if end < 0:
+              raise SystemExit('End of legacy homepage event mutation effect not found')
+          text = text[:start] + text[end:]
+
+          # Add stable desktop/mobile event menu CSS to the page stylesheet.
+          marker = '.nav-link:hover,.footer-link:hover{color:var(--red)}'
+          css = '''.nav-link:hover,.footer-link:hover{color:var(--red)}.static-event-nav{position:relative;height:76px;display:flex;align-items:center}.static-event-nav .event-nav-trigger{height:76px;display:flex;align-items:center;gap:5px;color:var(--soft);padding:0!important}.event-nav-arrow{font-size:12px;line-height:1;transform:translateY(-1px)}.static-event-menu{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);width:330px;padding:10px;background:#fff;border:1px solid #e5e5e5;border-top:2px solid var(--red);box-shadow:0 18px 50px rgba(0,0,0,.13);z-index:120}.static-event-nav:hover .static-event-menu,.static-event-nav:focus-within .static-event-menu{display:block}.static-event-menu .event-nav-item{display:block;padding:14px 13px;color:#222;border-bottom:1px solid #efefef}.static-event-menu .event-nav-item:last-child{border-bottom:0}.static-event-menu .event-nav-item strong{display:block;font-size:11px;letter-spacing:.06em}.static-event-menu .event-nav-item span{display:block;margin-top:5px;color:#777;font-size:11px;line-height:1.45}.static-event-menu .event-nav-item:hover{background:#f7f7f5;color:var(--red)}'''
+          if marker not in text:
+              raise SystemExit('Navbar CSS marker not found')
+          text = text.replace(marker, css, 1)
+          page.write_text(text)
+
+          # Prevent MemberMenu from mutating the navbar; MEMBER is now rendered statically.
+          member = Path('app/member-menu.jsx')
+          m = member.read_text()
+          start = m.find('  useEffect(() => {\n    let active = true;\n    const ensureMemberNav')
+          if start >= 0:
+              end = m.find('\n\n  return (', start)
+              if end < 0:
+                  raise SystemExit('End of MemberMenu mutation effect not found')
+              m = m[:start] + m[end:]
+          member.write_text(m)
+
+          # Prevent EventMenu from replacing the static EVENT item; keep its hamburger functionality.
+          event = Path('app/event-menu.jsx')
+          e = event.read_text()
+          marker_start = e.find('  useEffect(() => {\n    const navActions = document.querySelector(".nav-actions");')
+          if marker_start < 0:
+              raise SystemExit('EventMenu hamburger effect marker not found')
+          marker_end = e.find('\n\n  useEffect(() => {\n    if (pathname !== "/produk")', marker_start)
+          if marker_end < 0:
+              raise SystemExit('EventMenu second effect boundary not found')
+          hamburger = e[marker_start:marker_end]
+          # The hamburger effect is the navActions effect; the next effect is Midtrans.
+          # Find and remove the separate EVENT DOM mutation effect by its nav selector if present.
+          event_start = e.find('  useEffect(() => {\n    const nav = document.querySelector(".nav-links");')
+          if event_start >= 0:
+              event_end = e.find('\n\n  return (', event_start)
+              if event_end < 0:
+                  raise SystemExit('EventMenu EVENT mutation effect end not found')
+              e = e[:event_start] + e[event_end:]
+          event.write_text(e)
+          PY
+
+      - name: Commit and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.jsx app/member-menu.jsx app/event-menu.jsx .github/workflows/fix-navbar-no-refresh.yml
+          git rm .github/workflows/fix-navbar-no-refresh.yml
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Make navbar stable without refresh"
+          git push
