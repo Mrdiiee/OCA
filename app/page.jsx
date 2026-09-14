@@ -36,7 +36,8 @@ function Icon({ name, size = 20 }) {
 }
 
 function ProductCard({ item, onAdd, onBuy }) {
-  const outOfStock = Number(item.stock) <= 0;
+  const hasStock = item.stock !== undefined && item.stock !== null;
+  const outOfStock = hasStock && Number(item.stock) <= 0;
   return (
     <article className="product-card">
       <div className="product-image">
@@ -55,7 +56,7 @@ function ProductCard({ item, onAdd, onBuy }) {
           <div>
             <strong>{fmt(item.price)}</strong>
             {item.oldPrice ? <del>{fmt(item.oldPrice)}</del> : null}
-            <small className="stock-note">{outOfStock ? "Stok habis" : `Stok ${item.stock}`}</small>
+            <small className="stock-note">{outOfStock ? "Stok habis" : hasStock ? `Stok ${item.stock}` : "Tersedia"}</small>
           </div>
           <button className="text-btn" type="button" onClick={() => onBuy(item)} disabled={outOfStock}>
             {outOfStock ? "Stok habis" : "Beli sekarang"}
@@ -120,11 +121,12 @@ export default function OxygenGearSite() {
   const visibleProducts = products.filter((item) => `${item.name || ""} ${item.category || ""} ${item.kind || ""}`.toLowerCase().includes(search.trim().toLowerCase()));
 
   function add(item) {
-    if (Number(item.stock) <= 0) return;
+    const hasStock = item.stock !== undefined && item.stock !== null;
+    if (hasStock && Number(item.stock) <= 0) return;
     setCart((current) => {
       const found = current.find((entry) => entry.id === item.id);
-      if (found && found.qty >= Number(item.stock)) return current;
-      if (found) return current.map((entry) => entry.id === item.id ? { ...entry, qty: Math.min(entry.qty + 1, Number(item.stock)) } : entry);
+      if (hasStock && found && found.qty >= Number(item.stock)) return current;
+      if (found) return current.map((entry) => entry.id === item.id ? { ...entry, qty: hasStock ? Math.min(entry.qty + 1, Number(item.stock)) : entry.qty + 1 } : entry);
       return [...current, { ...item, qty: 1 }];
     });
     setCartOpen(true);
@@ -133,7 +135,11 @@ export default function OxygenGearSite() {
 
   function changeQty(id, delta) {
     setCart((current) => current
-      .map((item) => item.id === id ? { ...item, qty: Math.min(Math.max(item.qty + delta, 0), Number(item.stock || 999999)) } : item)
+      .map((item) => {
+        const hasStock = item.stock !== undefined && item.stock !== null;
+        const nextQty = item.qty + delta;
+        return item.id === id ? { ...item, qty: hasStock ? Math.min(Math.max(nextQty, 0), Number(item.stock)) : Math.max(nextQty, 0) } : item;
+      })
       .filter((item) => item.qty > 0));
   }
 
@@ -281,7 +287,7 @@ export default function OxygenGearSite() {
         <div className="overlay" onClick={() => setCartOpen(false)}>
           <aside className="drawer" onClick={(event) => event.stopPropagation()}>
             <div className="drawer-head"><span className="drawer-title">Keranjang</span><button className="close" type="button" onClick={() => setCartOpen(false)} aria-label="Tutup keranjang"><Icon name="close" /></button></div>
-            {cart.length === 0 ? <p className="empty">Keranjang masih kosong.</p> : <><div className="cart-list">{cart.map((item) => <div className="cart-row" key={item.id}><div><div className="cart-name">{item.name}</div><div className="cart-price">{fmt(item.price)}</div></div><div className="qty"><button type="button" onClick={() => changeQty(item.id, -1)} aria-label={`Kurangi ${item.name}`}><Icon name="minus" size={14} /></button><span>{item.qty}</span><button type="button" onClick={() => changeQty(item.id, 1)} disabled={Number(item.stock) > 0 && item.qty >= Number(item.stock)} aria-label={`Tambah ${item.name}`}><Icon name="plus" size={14} /></button></div></div>)}</div><div className="total"><span>Total</span><span>{fmt(total)}</span></div>{checkoutError && <div className="checkout-error">{checkoutError}</div>}<button className="btn" type="button" onClick={() => checkout()}>LANJUT KE CHECKOUT <Icon name="arrow" size={16} /></button></>}
+            {cart.length === 0 ? <p className="empty">Keranjang masih kosong.</p> : <><div className="cart-list">{cart.map((item) => <div className="cart-row" key={item.id}><div><div className="cart-name">{item.name}</div><div className="cart-price">{fmt(item.price)}</div></div><div className="qty"><button type="button" onClick={() => changeQty(item.id, -1)} aria-label={`Kurangi ${item.name}`}><Icon name="minus" size={14} /></button><span>{item.qty}</span><button type="button" onClick={() => changeQty(item.id, 1)} disabled={item.stock !== undefined && item.stock !== null && item.qty >= Number(item.stock)} aria-label={`Tambah ${item.name}`}><Icon name="plus" size={14} /></button></div></div>)}</div><div className="total"><span>Total</span><span>{fmt(total)}</span></div>{checkoutError && <div className="checkout-error">{checkoutError}</div>}<button className="btn" type="button" onClick={() => checkout()}>LANJUT KE CHECKOUT <Icon name="arrow" size={16} /></button></>}
           </aside>
         </div>
       )}
