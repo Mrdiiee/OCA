@@ -46,7 +46,7 @@ export default function LoginPage() {
       if (password !== confirmPassword) { setError('Konfirmasi password tidak sama.'); setLoading(false); return; }
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(), password,
-        options: { emailRedirectTo: `${window.location.origin}/login`, data: { full_name: fullName.trim(), phone: phone.trim(), address: address.trim(), city: city.trim(), postal_code: postalCode.trim() } },
+        options: { emailRedirectTo: `${window.location.origin}/`, data: { full_name: fullName.trim(), phone: phone.trim(), address: address.trim(), city: city.trim(), postal_code: postalCode.trim() } },
       });
       if (signUpError) { setError(signUpError.message); setLoading(false); return; }
       if (data.session && data.user?.email_confirmed_at) { window.location.replace(getNextPath()); return; }
