@@ -77,6 +77,7 @@ export default function OxygenGearSite() {
   const [products, setProducts] = useState(FALLBACK_PRODUCTS);
   const [productsLoading, setProductsLoading] = useState(true);
   const [homepageMedia, setHomepageMedia] = useState({});
+  const [privateTrips, setPrivateTrips] = useState([]);
 
   useEffect(() => {
     try {
@@ -100,6 +101,19 @@ export default function OxygenGearSite() {
       .finally(() => {
         if (active) setProductsLoading(false);
       });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/events", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => {
+        if (active && Array.isArray(data.events)) {
+          setPrivateTrips(data.events.filter((event) => String(event.type || "").trim().toUpperCase() === "PRIVATE TRIP"));
+        }
+      })
+      .catch(() => {});
     return () => { active = false; };
   }, []);
 
@@ -244,20 +258,28 @@ export default function OxygenGearSite() {
         </div>
       </section>
 
-      <section className="section">
-        <div className="container">
-          <div className="feature">
-            <div className="feature-image"><img src={TRIP.image} alt="Private Trip Papandayan" /></div>
-            <div className="feature-copy">
-              <div className="section-kicker">EVENT / PRIVATE TRIP · 02D01N</div>
-              <h3>{TRIP.name}</h3>
-              <p>{TRIP.blurb} Kami menangani persiapan perjalanan, briefing, dan pendampingan lapangan untuk kelompok kecil.</p>
-              <div className="feature-price">{fmt(TRIP.price)} / orang</div>
-              <div className="hero-actions"><a className="btn" href="/private-trip">LIHAT EVENT <Icon name="arrow" size={16} /></a><a className="btn ghost" href="/private-trip">DETAIL TRIP</a></div>
+      {privateTrips.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <div className="section-head"><div><div className="section-kicker">EVENT / PRIVATE TRIP</div><h2 className="section-title">Private Trip aktif</h2></div><a className="view-all" href="/event?type=PRIVATE%20TRIP">LIHAT SEMUA <Icon name="arrow" size={16} /></a></div>
+            <div style={{ display: "grid", gap: 18 }}>
+              {privateTrips.map((event) => (
+                <div className="feature" key={event.id}>
+                  <div className="feature-image"><img src={event.cover_image_url || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1400&q=85"} alt={event.title} onError={(e) => { e.currentTarget.style.display = "none"; }} /></div>
+                  <div className="feature-copy">
+                    <div className="section-kicker">EVENT / PRIVATE TRIP{event.event_date ? ` · ${new Date(event.event_date).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" })}` : ""}</div>
+                    <h3>{event.title}</h3>
+                    <p>{event.subtitle || event.description || "Perjalanan private yang disusun sesuai kebutuhan kelompokmu."}</p>
+                    {event.location && <p style={{ color: "var(--soft)", marginTop: 8 }}>LOKASI · {event.location}</p>}
+                    {event.price != null && <div className="feature-price">{fmt(event.price)}{event.quota ? " / orang" : ""}</div>}
+                    <div className="hero-actions"><a className="btn" href={`/event/${event.slug}`}>LIHAT EVENT <Icon name="arrow" size={16} /></a></div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="section">
         <div className="container">
