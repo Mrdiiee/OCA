@@ -55,6 +55,13 @@ export default function MemberMenu() {
         .shell .og-menu-trigger{width:42px!important;height:42px!important;margin-left:3px!important;border-radius:10px!important}
         .shell .og-menu-trigger svg{width:21px!important;height:21px!important}
 
+        /* Desktop: keep the primary navigation centered as one non-wrapping row. */
+        @media(min-width:981px){
+          .shell .nav-main{position:relative!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:0!important}
+          .shell .nav-links{position:absolute!important;left:50%!important;top:0!important;transform:translateX(-50%)!important;width:max-content!important;max-width:none!important;min-width:max-content!important;flex:0 0 auto!important;flex-wrap:nowrap!important;justify-content:center!important;white-space:nowrap!important}
+          .shell .nav-actions{margin-left:auto!important;flex:0 0 auto!important}
+        }
+
         /* Desktop navigation dropdowns */
         .shell .event-nav-menu{border-radius:14px!important;overflow:hidden!important;padding:6px!important;box-shadow:0 22px 60px rgba(0,0,0,.14)!important}
         .shell .event-nav-item{border-radius:10px!important;padding:15px 14px!important}
