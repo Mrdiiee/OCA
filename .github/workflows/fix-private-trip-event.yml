@@ -1,0 +1,42 @@
+name: Fix Private Trip Event
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, '[private-trip-event-fixed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update homepage classification
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/page.jsx')
+          s = p.read_text()
+          replacements = {
+              'category: "Trip",': 'category: "Event",',
+              '<span>03 / EXPERIENCE</span><h3>Private Trip</h3>': '<span>03 / EVENT</span><h3>Private Trip</h3>',
+              '<div className="section-kicker">EXPERIENCE / 02D01N</div>': '<div className="section-kicker">EVENT / PRIVATE TRIP · 02D01N</div>',
+              '<div className="hero-actions"><button className="btn" type="button" onClick={() => add(TRIP)}>TAMBAH KE KERANJANG <Icon name="arrow" size={16} /></button><a className="btn ghost" href="/private-trip">DETAIL TRIP</a></div>': '<div className="hero-actions"><a className="btn" href="/private-trip">LIHAT EVENT <Icon name="arrow" size={16} /></a><a className="btn ghost" href="/private-trip">DETAIL TRIP</a></div>',
+              '<div><div className="footer-head">SHOP</div><a className="footer-link" href="/produk">Produk</a><a className="footer-link" href="/private-trip">Private Trip</a><a className="footer-link" href="/status-pengiriman">Status Pengiriman</a></div>': '<div><div className="footer-head">SHOP</div><a className="footer-link" href="/produk">Produk</a><a className="footer-link" href="/private-trip">Event · Private Trip</a><a className="footer-link" href="/status-pengiriman">Status Pengiriman</a></div>',
+          }
+          for old, new in replacements.items():
+              if old not in s:
+                  raise SystemExit(f'Missing expected text: {old[:100]}')
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+      - name: Commit changes and remove temporary workflow
+        run: |
+          rm .github/workflows/fix-private-trip-event.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.jsx .github/workflows/fix-private-trip-event.yml
+          git commit -m 'Classify Private Trip as Event [private-trip-event-fixed]'
+          git push
