@@ -72,6 +72,7 @@ export default function OxygenGearSite() {
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [products, setProducts] = useState(FALLBACK_PRODUCTS);
@@ -94,13 +95,9 @@ export default function OxygenGearSite() {
     let active = true;
     fetch("/api/products", { cache: "no-store" })
       .then((response) => response.json())
-      .then((data) => {
-        if (active && Array.isArray(data.products)) setProducts(data.products);
-      })
+      .then((data) => { if (active && Array.isArray(data.products)) setProducts(data.products); })
       .catch(() => {})
-      .finally(() => {
-        if (active) setProductsLoading(false);
-      });
+      .finally(() => { if (active) setProductsLoading(false); });
     return () => { active = false; };
   }, []);
 
@@ -109,9 +106,7 @@ export default function OxygenGearSite() {
     fetch("/api/events", { cache: "no-store" })
       .then((response) => response.json())
       .then((data) => {
-        if (active && Array.isArray(data.events)) {
-          setPrivateTrips(data.events.filter((event) => String(event.type || "").trim().toUpperCase() === "PRIVATE TRIP"));
-        }
+        if (active && Array.isArray(data.events)) setPrivateTrips(data.events.filter((event) => String(event.type || "").trim().toUpperCase() === "PRIVATE TRIP"));
       })
       .catch(() => {});
     return () => { active = false; };
@@ -122,9 +117,7 @@ export default function OxygenGearSite() {
     fetch("/api/homepage-media", { cache: "no-store" })
       .then((response) => response.json())
       .then((data) => {
-        if (active && Array.isArray(data.media)) {
-          setHomepageMedia(Object.fromEntries(data.media.map((item) => [item.key, item])));
-        }
+        if (active && Array.isArray(data.media)) setHomepageMedia(Object.fromEntries(data.media.map((item) => [item.key, item])));
       })
       .catch(() => {});
     return () => { active = false; };
@@ -148,20 +141,15 @@ export default function OxygenGearSite() {
   }
 
   function changeQty(id, delta) {
-    setCart((current) => current
-      .map((item) => {
-        const hasStock = item.stock !== undefined && item.stock !== null;
-        const nextQty = item.qty + delta;
-        return item.id === id ? { ...item, qty: hasStock ? Math.min(Math.max(nextQty, 0), Number(item.stock)) : Math.max(nextQty, 0) } : item;
-      })
-      .filter((item) => item.qty > 0));
+    setCart((current) => current.map((item) => {
+      const hasStock = item.stock !== undefined && item.stock !== null;
+      const nextQty = item.qty + delta;
+      return item.id === id ? { ...item, qty: hasStock ? Math.min(Math.max(nextQty, 0), Number(item.stock)) : Math.max(nextQty, 0) } : item;
+    }).filter((item) => item.qty > 0));
   }
 
   function checkout(items = cart) {
-    if (!items.length) {
-      setCheckoutError("Keranjang masih kosong.");
-      return;
-    }
+    if (!items.length) { setCheckoutError("Keranjang masih kosong."); return; }
     try { localStorage.setItem("oxygen_cart", JSON.stringify(items)); } catch {}
     window.location.href = "/produk";
   }
@@ -176,7 +164,7 @@ export default function OxygenGearSite() {
   const css = `
 :root{--bg:#0b0b0a;--panel:#151412;--panel2:#11110f;--line:#302e29;--muted:#8b887f;--text:#f7f6f3;--soft:#d8d5cd;--red:#e1261c;--max:1320px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg)}a{text-decoration:none;color:inherit}button,input{font:inherit}.shell{min-height:100vh;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}.container{width:min(var(--max),calc(100% - 48px));margin:auto}
-.topbar{background:var(--red);color:#fff;text-align:center;padding:9px 16px;font-size:11px;font-weight:700;letter-spacing:.08em}.topbar a{text-decoration:underline;text-underline-offset:3px}.nav{position:sticky;top:0;z-index:40;background:rgba(11,11,10,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}.nav-main{min-height:76px;display:flex;align-items:center;gap:34px}.brand{display:flex;align-items:center;font-weight:900;letter-spacing:.05em;white-space:nowrap;font-size:17px}.brand-mark{display:inline-block;width:14px;height:14px;background:var(--red);margin-right:9px;transform:skew(-18deg)}.brand-logo-image{display:block;width:auto;height:44px;max-width:260px;object-fit:contain}.nav-links{display:flex;align-items:center;gap:25px;flex:1}.nav-link{color:var(--soft);font-size:13px;font-weight:700}.nav-link:hover,.footer-link:hover{color:var(--red)}.static-event-nav{position:relative;height:76px;display:flex;align-items:center}.static-event-nav .event-nav-trigger{height:76px;display:flex;align-items:center;gap:5px;color:var(--soft);padding:0!important}.event-nav-arrow{font-size:12px;line-height:1;transform:translateY(-1px)}.static-event-menu{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);width:330px;padding:10px;background:#fff;border:1px solid #e5e5e5;border-top:2px solid var(--red);box-shadow:0 18px 50px rgba(0,0,0,.13);z-index:120}.static-event-nav:hover .static-event-menu,.static-event-nav:focus-within .static-event-menu{display:block}.static-event-menu .event-nav-item{display:block;padding:14px 13px;color:#222;border-bottom:1px solid #efefef}.static-event-menu .event-nav-item:last-child{border-bottom:0}.static-event-menu .event-nav-item strong{display:block;font-size:11px;letter-spacing:.06em}.static-event-menu .event-nav-item span{display:block;margin-top:5px;color:#777;font-size:11px;line-height:1.45}.static-event-menu .event-nav-item:hover{background:#f7f7f5;color:var(--red)}.nav-actions{display:flex;align-items:center;gap:7px}.icon-btn{position:relative;border:0;background:transparent;color:var(--text);width:40px;height:40px;display:grid;place-items:center;cursor:pointer}.icon-btn:hover{color:var(--red)}.bag-count{position:absolute;right:1px;top:1px;background:var(--red);color:#fff;border-radius:999px;min-width:16px;height:16px;padding:0 4px;display:grid;place-items:center;font-size:9px;font-weight:800}.search-panel{border-top:1px solid var(--line);padding:14px 0}.search-inner{display:flex;align-items:center;gap:10px}.search-inner input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:15px}.search-inner input::placeholder{color:var(--muted)}
+.topbar{background:var(--red);color:#fff;text-align:center;padding:9px 16px;font-size:11px;font-weight:700;letter-spacing:.08em}.topbar a{text-decoration:underline;text-underline-offset:3px}.nav{position:sticky;top:0;z-index:40;background:rgba(11,11,10,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}.nav-main{min-height:76px;display:flex;align-items:center;gap:34px}.brand{display:flex;align-items:center;font-weight:900;letter-spacing:.05em;white-space:nowrap;font-size:17px}.brand-mark{display:inline-block;width:14px;height:14px;background:var(--red);margin-right:9px;transform:skew(-18deg)}.brand-logo-image{display:block;width:auto;height:44px;max-width:260px;object-fit:contain}.nav-links{display:flex;align-items:center;gap:25px;flex:1}.nav-link{color:var(--soft);font-size:13px;font-weight:700}.nav-link:hover,.footer-link:hover{color:var(--red)}.static-event-nav{position:relative;height:76px;display:flex;align-items:center}.static-event-nav .event-nav-trigger{height:76px;display:flex;align-items:center;gap:5px;color:var(--soft);padding:0!important}.event-nav-arrow{font-size:12px;line-height:1;transform:translateY(-1px)}.static-event-menu{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);width:330px;padding:10px;background:#fff;border:1px solid #e5e5e5;border-top:2px solid var(--red);box-shadow:0 18px 50px rgba(0,0,0,.13);z-index:120}.static-event-nav:hover .static-event-menu,.static-event-nav:focus-within .static-event-menu{display:block}.static-event-menu .event-nav-item{display:block;padding:14px 13px;color:#222;border-bottom:1px solid #efefef}.static-event-menu .event-nav-item:last-child{border-bottom:0}.static-event-menu .event-nav-item strong{display:block;font-size:11px;letter-spacing:.06em}.static-event-menu .event-nav-item span{display:block;margin-top:5px;color:#777;font-size:11px;line-height:1.45}.static-event-menu .event-nav-item:hover{background:#f7f7f5;color:var(--red)}.nav-actions{display:flex;align-items:center;gap:7px}.more-wrap{position:relative;height:100%;display:flex;align-items:center;flex:0 0 auto}.og-menu-trigger{color:var(--text)!important}.og-menu-trigger svg{display:block;width:20px;height:20px}.more-menu{display:none;position:absolute;right:0;top:50px;width:370px;max-width:calc(100vw - 32px);max-height:calc(100vh - 80px);overflow:auto;background:#fff;border:1px solid #e5e5e5;border-top:3px solid #111;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.14);padding:10px;z-index:400;box-sizing:border-box}.more-menu.is-open{display:block}.og-hamburger-list{display:grid;grid-template-columns:1fr;gap:3px}.og-hamburger-list .more-item{display:flex;align-items:center;min-width:0;min-height:48px;padding:13px 14px;border-radius:11px;box-sizing:border-box;color:#222!important;background:transparent;text-decoration:none;text-align:left;font:800 10px/1.25 Arial,sans-serif;letter-spacing:.09em;overflow-wrap:anywhere}.og-hamburger-list .more-item:hover{background:#f5f5f3!important;color:var(--red)!important}.og-hamburger-list .og-index-item{background:#111!important;color:#fff!important;min-height:52px}.og-hamburger-list .og-index-item:hover{background:var(--red)!important;color:#fff!important}.og-primary-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ececea;border-radius:12px;background:#fafaf8;overflow:hidden}.og-primary-grid .more-item{border-radius:0!important}.og-primary-grid .more-item:nth-child(odd){border-right:1px solid #ececea}.og-primary-grid .more-item:nth-child(-n+2){border-bottom:1px solid #ececea}.og-order-item{border:1px solid #ececea!important;background:#fafaf8!important}.og-hamburger-list .og-order-item span{font-weight:700;letter-spacing:.05em;margin-left:4px}.og-hamburger-list a::before,.og-hamburger-list a::after,.og-hamburger-list svg,.og-hamburger-list .arrow{content:none!important;display:none!important}.icon-btn{position:relative;border:0;background:transparent;color:var(--text);width:40px;height:40px;display:grid;place-items:center;cursor:pointer}.icon-btn:hover{color:var(--red)}.bag-count{position:absolute;right:1px;top:1px;background:var(--red);color:#fff;border-radius:999px;min-width:16px;height:16px;padding:0 4px;display:grid;place-items:center;font-size:9px;font-weight:800}.search-panel{border-top:1px solid var(--line);padding:14px 0}.search-inner{display:flex;align-items:center;gap:10px}.search-inner input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:15px}.search-inner input::placeholder{color:var(--muted)}
 .hero{min-height:650px;position:relative;display:flex;align-items:flex-end;overflow:hidden;background:#10100e}.hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.42;filter:saturate(.65) contrast(1.1)}.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,7,6,.92),rgba(7,7,6,.62) 48%,rgba(7,7,6,.16)),linear-gradient(0deg,rgba(7,7,6,.9),transparent 45%)}.hero-content{position:relative;z-index:1;width:min(var(--max),calc(100% - 48px));margin:0 auto;padding:90px 0}.eyebrow{font:11px monospace;color:#e8e4dc;letter-spacing:.13em;margin-bottom:18px}.hero h1{font-size:clamp(55px,8vw,112px);line-height:.86;letter-spacing:-.06em;max-width:820px;margin:0 0 24px}.hero h1 em{color:var(--red);font-style:normal}.hero p{max-width:590px;color:#e1ded6;font-size:17px;line-height:1.65;margin:0 0 30px}.hero-actions{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}.hero-actions .hero-collection-btn,.hero-actions .hero-index-btn{width:220px;height:48px;min-height:48px;padding:13px 18px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid var(--text);padding:13px 18px;background:var(--text);color:var(--bg);font-weight:800;font-size:12px;cursor:pointer}.btn:hover{background:var(--red);border-color:var(--red);color:#fff}.hero-index-btn{background:#fff;color:#111;border-color:#fff}.hero-index-btn:hover{background:#fff;border-color:#fff;color:#111}
 .ticker{border-bottom:1px solid var(--line);border-top:1px solid var(--line);display:flex;overflow:hidden;white-space:nowrap;background:var(--panel2)}.ticker span{padding:14px 24px;font-size:11px;font-weight:800;letter-spacing:.08em;border-right:1px solid var(--line)}.ticker b{color:var(--red)}.section{padding:80px 0;border-bottom:1px solid var(--line)}.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:30px}.section-kicker{font:10px monospace;color:var(--red);letter-spacing:.12em;margin-bottom:7px}.section-title{font-size:42px;letter-spacing:-.04em;margin:0;color:#fff}.section-copy{max-width:520px;color:#c7c4bc;font-size:13px;line-height:1.6;margin:0}.view-all{display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:12px;font-weight:800}.view-all:hover{color:var(--red)}
 .category-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.category{min-height:220px;border:1px solid var(--line);position:relative;overflow:hidden;background:var(--panel);color:#fff}.category img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;filter:saturate(.55);opacity:.58;transition:transform .4s,opacity .4s}.category:hover img{transform:scale(1.05);opacity:.78}.category:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(5,5,4,.88),transparent 70%)}.category-copy{position:absolute;z-index:1;left:18px;bottom:17px;color:#fff}.category-copy span{font:10px monospace;color:#fff}.category-copy h3{margin:5px 0 0;font-size:22px;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.7)}
@@ -184,7 +172,7 @@ export default function OxygenGearSite() {
 .feature{display:grid;grid-template-columns:1.15fr .85fr;min-height:510px;border:1px solid var(--line);background:var(--panel)}.feature-image{min-height:510px;position:relative;overflow:hidden}.feature-image img{width:100%;height:100%;object-fit:cover;filter:saturate(.6)}.feature-copy{padding:55px;display:flex;flex-direction:column;justify-content:center}.feature-copy h3{font-size:50px;line-height:.95;letter-spacing:-.05em;margin:0 0 20px;color:#fff}.feature-copy p{color:#f0eee9;line-height:1.65;font-size:14px}.feature-price{font-size:18px;font-weight:800;margin:15px 0 24px;color:#fff}.editorial{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}.editorial-card{min-height:330px;border:1px solid var(--line);position:relative;overflow:hidden;color:#fff}.editorial-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(.55)}.editorial-card:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(6,6,5,.94),rgba(6,6,5,.05) 65%)}.editorial-copy{position:absolute;z-index:1;left:24px;right:24px;bottom:23px;color:#fff}.editorial-copy span{font:10px monospace;color:#fff}.editorial-copy h3{font-size:31px;line-height:1;margin:7px 0;color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.8)}.editorial-copy p{color:#f0eee9;font-size:12px;line-height:1.5}
 .perks{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line)}.perk{padding:26px 22px;border-right:1px solid var(--line)}.perk:last-child{border-right:0}.perk b{display:block;font-size:13px;margin-bottom:7px}.perk span{font-size:11px;color:var(--muted);line-height:1.5}.footer{padding:65px 0 25px}.footer-top{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:40px;padding-bottom:55px}.footer-head{font:10px monospace;color:var(--muted);letter-spacing:.1em;margin-bottom:14px}.footer-text{color:var(--soft);font-size:13px;line-height:1.6}.footer-link{display:block;color:var(--soft);font-size:13px;margin-bottom:9px}.newsletter{max-width:420px;margin-top:20px;display:flex;border-bottom:1px solid var(--line)}.newsletter input{flex:1;background:transparent;border:0;outline:0;color:var(--text);padding:12px 0}.newsletter button{border:0;background:none;color:var(--soft);cursor:pointer}.footer-bottom{border-top:1px solid var(--line);padding-top:18px;color:#6b6963;font-size:10px;display:flex;justify-content:space-between;gap:15px}
 .overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.72);display:flex;justify-content:flex-end}.drawer{width:min(450px,100%);height:100%;background:var(--bg);border-left:1px solid var(--line);padding:24px;display:flex;flex-direction:column}.drawer-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:18px}.drawer-title{font-size:25px;font-weight:800}.close{border:0;background:none;color:var(--muted);cursor:pointer}.cart-list{flex:1;overflow:auto;margin-top:10px}.cart-row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:18px 0;gap:16px}.cart-name{font-size:14px;font-weight:700}.cart-price{color:var(--muted);font-size:12px;margin-top:4px}.qty{display:flex;align-items:center;gap:8px}.qty button{width:28px;height:28px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}.total{display:flex;justify-content:space-between;font-weight:800;padding:17px 0;border-top:1px solid var(--line)}.empty{color:var(--muted);line-height:1.6}.drawer .btn{width:100%}.checkout-error{border:1px solid #7c4b47;color:#ff8178;padding:12px;font-size:12px;line-height:1.5;margin:12px 0}
-@media(max-width:980px){.nav-links{display:none}.category-grid{grid-template-columns:repeat(2,1fr)}.feature,.editorial{grid-template-columns:1fr}.feature-image{min-height:390px}.perks{grid-template-columns:repeat(2,1fr)}.perk:nth-child(2){border-right:0}.perk:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+@media(max-width:980px){.nav-links{display:none}.more-wrap{display:flex!important;flex:0 0 auto!important}.og-menu-trigger{width:34px!important;min-width:34px!important;height:40px!important;padding:0!important}.nav-actions{gap:1px!important;min-width:0!important}.nav-actions>.icon-btn{width:32px!important;min-width:32px!important;flex:0 0 32px!important;padding:0!important}.more-menu{position:fixed!important;top:76px!important;left:8px!important;right:8px!important;width:auto!important;max-width:none!important;max-height:calc(100dvh - 88px)!important;overflow-x:hidden!important;overflow-y:auto!important}.category-grid{grid-template-columns:repeat(2,1fr)}.feature,.editorial{grid-template-columns:1fr}.feature-image{min-height:390px}.perks{grid-template-columns:repeat(2,1fr)}.perk:nth-child(2){border-right:0}.perk:nth-child(-n+2){border-bottom:1px solid var(--line)}}
 @media(max-width:650px){.ticker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));white-space:normal;overflow:hidden}.ticker span{min-width:0;text-align:center;padding:14px 10px;line-height:1.35;display:flex;align-items:center;justify-content:center}.ticker span:last-child{grid-column:1/-1}.hero-actions .hero-collection-btn,.hero-actions .hero-index-btn{width:100%}.container,.hero-content{width:min(100% - 28px,var(--max))}.nav-main{min-height:64px;gap:8px}.brand{font-size:14px}.brand-logo-image{height:36px;max-width:210px}.icon-btn{width:36px}.topbar{font-size:9px}.hero{min-height:600px}.hero-content{padding:70px 0}.hero h1{font-size:54px}.hero p{font-size:14px}.section{padding:58px 0}.section-head{align-items:flex-start;flex-direction:column}.section-title{font-size:34px}.category-grid,.product-grid{grid-template-columns:1fr}.product-image{height:360px}.feature-copy{padding:32px 24px}.feature-copy h3{font-size:40px}.perks{grid-template-columns:1fr}.perk{border-right:0!important;border-bottom:1px solid var(--line)}.perk:last-child{border-bottom:0}.footer-top{grid-template-columns:1fr 1fr;gap:30px}.footer-top>div:first-child{grid-column:1/-1}.footer-bottom{flex-direction:column}.more-menu{position:fixed;left:14px;right:14px;top:68px;width:auto}}
 `;
 
@@ -199,23 +187,40 @@ export default function OxygenGearSite() {
             {homepageMedia.logo?.url ? <img className="brand-logo-image" src={homepageMedia.logo.url} alt="Oxygen Gear" /> : <><span className="brand-mark" /><span>OXYGEN GEAR</span></>}
           </a>
           <nav className="nav-links" aria-label="Navigasi utama">
-  <a className="nav-link" href="/produk">PRODUK</a>
-  <div className="event-nav-wrap static-event-nav">
-    <a className="nav-link event-nav-trigger" href="/event" aria-haspopup="true">EVENT <span className="event-nav-arrow" aria-hidden="true">⌄</span></a>
-    <div className="event-nav-menu static-event-menu">
-      <a href="/event" className="event-nav-item"><strong>SEMUA EVENT</strong><span>Lihat seluruh agenda Oxygen Gear</span></a>
-      <a href="/event#pendakian-bersama" className="event-nav-item"><strong>PENDAKIAN BERSAMA</strong><span>Agenda pendakian komunitas</span></a>
-      <a href="/event#ekspedisi" className="event-nav-item"><strong>EKSPEDISI</strong><span>Perjalanan dan eksplorasi khusus</span></a>
-      <a href="/private-trip" className="event-nav-item"><strong>PRIVATE TRIP</strong><span>Trip eksklusif sesuai tim Anda</span></a>
-    </div>
-  </div>
-  <a className="nav-link" href="/member">MEMBER</a>
-  <a className="nav-link" href="/tentang">TENTANG</a>
-</nav>
+            <a className="nav-link" href="/produk">PRODUK</a>
+            <div className="event-nav-wrap static-event-nav">
+              <a className="nav-link event-nav-trigger" href="/event" aria-haspopup="true">EVENT <span className="event-nav-arrow" aria-hidden="true">⌄</span></a>
+              <div className="event-nav-menu static-event-menu">
+                <a href="/event" className="event-nav-item"><strong>SEMUA EVENT</strong><span>Lihat seluruh agenda Oxygen Gear</span></a>
+                <a href="/event#pendakian-bersama" className="event-nav-item"><strong>PENDAKIAN BERSAMA</strong><span>Agenda pendakian komunitas</span></a>
+                <a href="/event#ekspedisi" className="event-nav-item"><strong>EKSPEDISI</strong><span>Perjalanan dan eksplorasi khusus</span></a>
+                <a href="/private-trip" className="event-nav-item"><strong>PRIVATE TRIP</strong><span>Trip eksklusif sesuai tim Anda</span></a>
+              </div>
+            </div>
+            <a className="nav-link" href="/member">MEMBER</a>
+            <a className="nav-link" href="/tentang">TENTANG</a>
+          </nav>
           <div className="nav-actions">
             <button className="icon-btn" type="button" onClick={() => setSearchOpen((value) => !value)} aria-label="Cari"><Icon name="search" /></button>
             <a className="icon-btn" href="/informasi-user" aria-label="Akun"><Icon name="user" /></a>
             <button className="icon-btn" type="button" onClick={() => setCartOpen(true)} aria-label="Keranjang"><Icon name="bag" /><span className="bag-count">{count}</span></button>
+            <div className="more-wrap">
+              <button className="icon-btn og-menu-trigger" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-haspopup="menu" aria-label="Buka menu navigasi"><Icon name="menu" size={20} /></button>
+              <div className={`more-menu${menuOpen ? " is-open" : ""}`}>
+                <nav className="og-hamburger-list" aria-label="Menu utama">
+                  <a className="more-item account-entry" href="/informasi-user" role="menuitem">Informasi Akun</a>
+                  <a className="more-item og-index-item" href="/oxygen-index" role="menuitem">OXYGEN INDEX</a>
+                  <div className="og-primary-grid">
+                    <a className="more-item" href="/produk" role="menuitem">PRODUK</a>
+                    <a className="more-item" href="/event" role="menuitem">EVENT</a>
+                    <a className="more-item" href="/member" role="menuitem">MEMBER</a>
+                    <a className="more-item" href="/tentang" role="menuitem">TENTANG</a>
+                  </div>
+                  <a className="more-item og-order-item" href="/pesanan-saya" role="menuitem">PESANAN SAYA <span>· STATUS PENGIRIMAN</span></a>
+                  <a className="more-item" href="/kontak" role="menuitem">KONTAK</a>
+                </nav>
+              </div>
+            </div>
           </div>
         </div>
         {searchOpen && (
