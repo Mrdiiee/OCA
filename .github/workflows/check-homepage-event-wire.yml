@@ -1,0 +1,12 @@
+name: Check homepage event wiring
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          grep -q 'createServerSupabaseClient' app/page.jsx
+          grep -q 'privateTripEvents' app/page.jsx
+          echo 'Homepage Private Trip event wiring is present.'
