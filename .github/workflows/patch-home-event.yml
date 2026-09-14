@@ -1,0 +1,45 @@
+name: Patch homepage private trip
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch homepage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/page.jsx')
+          s=p.read_text()
+          s=s.replace('  const [homepageMedia, setHomepageMedia] = useState({});\n', '  const [homepageMedia, setHomepageMedia] = useState({});\n  const [privateTrips, setPrivateTrips] = useState([]);\n')
+          marker='  useEffect(() => {\n    let active = true;\n    fetch("/api/homepage-media", { cache: "no-store" })'
+          insert='''  useEffect(() => {\n    let active = true;\n    fetch("/api/events", { cache: "no-store" })\n      .then((response) => response.json())\n      .then((data) => {\n        if (active && Array.isArray(data.events)) {\n          setPrivateTrips(data.events.filter((event) => String(event.type || "").trim().toUpperCase() === "PRIVATE TRIP"));\n        }\n      })\n      .catch(() => {});\n    return () => { active = false; };\n  }, []);\n\n'''+marker
+          if 'fetch("/api/events"' not in s: s=s.replace(marker,insert,1)
+          old='''      <section className="section">\n        <div className="container">\n          <div className="feature">\n            <div className="feature-image"><img src={TRIP.image} alt="Private Trip Papandayan" /></div>\n            <div className="feature-copy">\n              <div className="section-kicker">EVENT / PRIVATE TRIP · 02D01N</div>\n              <h3>{TRIP.name}</h3>\n              <p>{TRIP.blurb} Kami menangani persiapan perjalanan, briefing, dan pendampingan lapangan untuk kelompok kecil.</p>\n              <div className="feature-price">{fmt(TRIP.price)} / orang</div>\n              <div className="hero-actions"><a className="btn" href="/private-trip">LIHAT EVENT <Icon name="arrow" size={16} /></a><a className="btn ghost" href="/private-trip">DETAIL TRIP</a></div>\n            </div>\n          </div>\n        </div>\n      </section>'''
+          new='''      {privateTrips.length > 0 && (\n        <section className="section">\n          <div className="container">\n            <div className="section-head"><div><div className="section-kicker">EVENT / PRIVATE TRIP</div><h2 className="section-title">Private Trip aktif</h2></div><a className="view-all" href="/event?type=PRIVATE%20TRIP">LIHAT SEMUA <Icon name="arrow" size={16} /></a></div>\n            <div style={{ display: "grid", gap: 18 }}>\n              {privateTrips.map((event) => (\n                <div className="feature" key={event.id}>\n                  <div className="feature-image"><img src={event.cover_image_url || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1400&q=85"} alt={event.title} onError={(e) => { e.currentTarget.style.display = "none"; }} /></div>\n                  <div className="feature-copy">\n                    <div className="section-kicker">EVENT / PRIVATE TRIP{event.event_date ? ` · ${new Date(event.event_date).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" })}` : ""}</div>\n                    <h3>{event.title}</h3>\n                    <p>{event.subtitle || event.description || "Perjalanan private yang disusun sesuai kebutuhan kelompokmu."}</p>\n                    {event.location && <p style={{ color: "var(--soft)", marginTop: 8 }}>LOKASI · {event.location}</p>}\n                    {event.price != null && <div className="feature-price">{fmt(event.price)}{event.quota ? " / orang" : ""}</div>}\n                    <div className="hero-actions"><a className="btn" href={`/event/${event.slug}`}>LIHAT EVENT <Icon name="arrow" size={16} /></a></div>\n                  </div>\n                </div>\n              ))}\n            </div>\n          </div>\n        </section>\n      )}'''
+          if old not in s: raise SystemExit('target homepage event block not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Verify
+        run: |
+          grep -q 'fetch("/api/events"' app/page.jsx
+          grep -q 'privateTrips.map' app/page.jsx
+          grep -q 'href={`/event/${event.slug}`}' app/page.jsx
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.jsx
+          git commit -m "Connect homepage private trips to event manager"
+          git push
+      - name: Remove patch workflow
+        if: always()
+        run: |
+          git rm -f .github/workflows/patch-home-event.yml || true
+          git commit -m "Remove temporary homepage patch workflow" || true
+          git push || true
