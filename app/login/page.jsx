@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../lib/supabase-browser';
 
+const PUBLIC_SITE_URL = 'https://www.oxygengear.store';
+
 export default function LoginPage() {
   const supabase = useMemo(() => createClient(), []);
   const [mode, setMode] = useState('login');
@@ -46,7 +48,7 @@ export default function LoginPage() {
       if (password !== confirmPassword) { setError('Konfirmasi password tidak sama.'); setLoading(false); return; }
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(), password,
-        options: { emailRedirectTo: `${window.location.origin}/`, data: { full_name: fullName.trim(), phone: phone.trim(), address: address.trim(), city: city.trim(), postal_code: postalCode.trim() } },
+        options: { emailRedirectTo: `${PUBLIC_SITE_URL}/`, data: { full_name: fullName.trim(), phone: phone.trim(), address: address.trim(), city: city.trim(), postal_code: postalCode.trim() } },
       });
       if (signUpError) { setError(signUpError.message); setLoading(false); return; }
       if (data.session && data.user?.email_confirmed_at) { window.location.replace(getNextPath()); return; }
