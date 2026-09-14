@@ -1,51 +1,36 @@
-name: Fix navbar SSR
-
+name: Fix Navbar SSR
 on:
   push:
-    branches: [main]
-
+    paths:
+      - .github/workflows/fix-navbar-ssr.yml
 permissions:
   contents: write
-
 jobs:
   patch:
-    if: contains(github.event.head_commit.message, 'Fix navbar SSR') == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
       - name: Patch homepage navbar
-        shell: python
         run: |
+          python - <<'PY'
           from pathlib import Path
-
-          path = Path('app/page.jsx')
-          text = path.read_text(encoding='utf-8')
-
-          old = '''<nav className="nav-links"><a className="nav-link" href="/produk">PRODUK</a><a className="nav-link" href="/private-trip">PRIVATE TRIP</a><a className="nav-link" href="/tentang">TENTANG</a><a className="nav-link" href="/kontak">KONTAK</a></nav>'''
-          new = '''<nav className="nav-links"><a className="nav-link" href="/produk">PRODUK</a><a className="nav-link" href="/event">EVENT</a><a className="nav-link" href="/member">MEMBER</a><a className="nav-link" href="/tentang">TENTANG</a></nav>'''
-
-          if old not in text:
-              raise SystemExit('Expected old navbar markup was not found')
-
-          text = text.replace(old, new, 1)
-
-          old_actions = '''<div className="nav-actions"><button className="icon-btn" type="button" aria-label="Cari"><Icon name="search" size={20} /></button><a className="icon-btn" href="/informasi-user" aria-label="Akun"><Icon name="user" size={20} /></a><button className="icon-btn" type="button" aria-label="Keranjang" onClick={() => setCartOpen(true)}><Icon name="bag" size={20} /><span className="bag-count">{count}</span></button></div>'''
-          new_actions = '''<div className="nav-actions"><button className="icon-btn" type="button" aria-label="Cari"><Icon name="search" size={20} /></button><a className="icon-btn" href="/informasi-user" aria-label="Akun"><Icon name="user" size={20} /></a><button className="icon-btn" type="button" aria-label="Keranjang" onClick={() => setCartOpen(true)}><Icon name="bag" size={20} /><span className="bag-count">{count}</span></button><details className="more-wrap og-static-menu"><summary className="icon-btn og-menu-trigger" aria-label="Buka menu navigasi"><Icon name="menu" size={20} /></summary><div className="more-menu og-static-menu-panel"><nav className="og-hamburger-list" aria-label="Menu utama"><a className="more-item account-entry" href="/informasi-user">Informasi Akun</a><a className="more-item og-index-item" href="/oxygen-index">OXYGEN INDEX</a><div className="og-primary-grid"><a className="more-item" href="/produk">PRODUK</a><a className="more-item" href="/event">EVENT</a><a className="more-item" href="/member">MEMBER</a><a className="more-item" href="/tentang">TENTANG</a></div><a className="more-item og-order-item" href="/pesanan-saya">PESANAN SAYA <span>· STATUS PENGIRIMAN</span></a><a className="more-item" href="/kontak">KONTAK</a></nav></div></details></div>'''
-
-          if old_actions not in text:
-              raise SystemExit('Expected old navbar actions markup was not found')
-
-          text = text.replace(old_actions, new_actions, 1)
-          path.write_text(text, encoding='utf-8')
-
-      - name: Commit page change and remove workflow
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          p=Path('app/page.jsx')
+          s=p.read_text()
+          old='<nav className="nav-links"><a className="nav-link" href="/produk">PRODUK</a><a className="nav-link" href="/private-trip">PRIVATE TRIP</a><a className="nav-link" href="/tentang">TENTANG</a><a className="nav-link" href="/kontak">KONTAK</a></nav>'
+          new='<nav className="nav-links"><a className="nav-link" href="/produk">PRODUK</a><a className="nav-link" href="/event">EVENT</a><a className="nav-link" href="/member">MEMBER</a><a className="nav-link" href="/tentang">TENTANG</a></nav>'
+          if old not in s:
+              raise SystemExit('old navbar target not found')
+          s=s.replace(old,new,1)
+          old_actions='<div className="nav-actions"><button className="icon-btn" type="button" aria-label="Cari"><Icon name="search" size={20} /></button><a className="icon-btn" href="/informasi-user" aria-label="Akun"><Icon name="user" size={20} /></a><button className="icon-btn" type="button" aria-label="Keranjang" onClick={() => setCartOpen(true)}><Icon name="bag" size={20} /><span className="bag-count">{count}</span></button></div>'
+          new_actions='<div className="nav-actions"><button className="icon-btn" type="button" aria-label="Cari"><Icon name="search" size={20} /></button><a className="icon-btn" href="/informasi-user" aria-label="Akun"><Icon name="user" size={20} /></a><button className="icon-btn" type="button" aria-label="Keranjang" onClick={() => setCartOpen(true)}><Icon name="bag" size={20} /><span className="bag-count">{count}</span></button><details className="more-wrap og-static-menu"><summary className="icon-btn og-menu-trigger" aria-label="Buka menu navigasi"><Icon name="menu" size={20} /></summary><div className="more-menu og-static-menu-panel"><nav className="og-hamburger-list" aria-label="Menu utama"><a className="more-item account-entry" href="/informasi-user">Informasi Akun</a><a className="more-item og-index-item" href="/oxygen-index">OXYGEN INDEX</a><div className="og-primary-grid"><a className="more-item" href="/produk">PRODUK</a><a className="more-item" href="/event">EVENT</a><a className="more-item" href="/member">MEMBER</a><a className="more-item" href="/tentang">TENTANG</a></div><a className="more-item og-order-item" href="/pesanan-saya">PESANAN SAYA <span>· STATUS PENGIRIMAN</span></a><a className="more-item" href="/kontak">KONTAK</a></nav></div></details></div>'
+          if old_actions not in s:
+              raise SystemExit('old navbar actions target not found')
+          s=s.replace(old_actions,new_actions,1)
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/page.jsx
           git rm .github/workflows/fix-navbar-ssr.yml
-          git commit -m "Fix navbar SSR"
+          git commit -m 'fix: render final navbar in initial HTML'
           git push
