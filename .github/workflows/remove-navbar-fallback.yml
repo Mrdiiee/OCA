@@ -1,0 +1,48 @@
+name: Remove navbar fallback layer
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  remove-fallback:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove SSR navbar fallback only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('app/member-menu.jsx')
+          s = p.read_text()
+
+          css_pattern = r'\n        /\* SSR NAV FALLBACK:.*?\n        @media\(max-width:420px\)\{.*?\}\n'
+          s2, n_css = re.subn(css_pattern, '\n', s, count=1, flags=re.S)
+          if n_css != 1:
+              raise SystemExit(f'Expected exactly one SSR fallback CSS block, found {n_css}')
+
+          nav_pattern = r'\n      <nav className=\\"og-ssr-nav-fallback\\".*?\n      </nav>\n'
+          s3, n_nav = re.subn(nav_pattern, '\n', s2, count=1, flags=re.S)
+          if n_nav != 1:
+              raise SystemExit(f'Expected exactly one SSR fallback nav, found {n_nav}')
+
+          p.write_text(s3)
+          print('Removed only .og-ssr-nav-fallback CSS and markup.')
+          PY
+
+      - name: Commit fix and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/member-menu.jsx
+          git diff --cached --check
+          git commit -m 'Remove duplicate SSR navbar fallback'
+          git rm .github/workflows/remove-navbar-fallback.yml
+          git commit -m 'Remove one-time navbar cleanup workflow'
+          git push
