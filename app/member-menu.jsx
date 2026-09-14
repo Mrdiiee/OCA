@@ -102,11 +102,11 @@ export default function MemberMenu() {
         /* Mobile */
         @media(max-width:980px){
           .shell .nav{height:68px!important}
-          .shell .nav-main{height:68px!important;display:flex!important;gap:8px!important;padding:0 14px!important}
-          .shell .nav .brand{height:44px!important;width:auto!important;max-width:145px!important;flex:1 1 auto!important}
+          .shell .nav-main{height:68px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;padding:0 14px!important;box-sizing:border-box!important;width:100%!important;min-width:0!important}
+          .shell .nav .brand{height:44px!important;width:auto!important;max-width:145px!important;flex:0 1 auto!important;min-width:0!important;margin-right:auto!important}
           .shell .nav .brand-logo-image{height:38px!important;max-width:145px!important}
           .shell .nav-links{display:none!important}
-          .shell .nav-actions{height:68px!important;gap:2px!important}
+          .shell .nav-actions{height:68px!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:2px!important;flex:0 0 auto!important;width:auto!important;min-width:max-content!important;margin-left:auto!important}
           .shell .icon-btn{width:34px!important;height:34px!important;min-width:34px!important}
           .shell .og-menu-trigger{width:38px!important;height:38px!important;margin-left:2px!important}
           .shell .og-main-menu,.shell .more-menu{max-width:calc(100vw - 20px)!important}
