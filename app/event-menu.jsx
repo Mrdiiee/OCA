@@ -47,6 +47,90 @@ export default function EventMenu() {
   }, [router]);
 
   useEffect(() => {
+    const navActions = document.querySelector(".nav-actions");
+    if (!navActions || navActions.querySelector(".more-wrap")) return undefined;
+
+    const wrap = document.createElement("div");
+    wrap.className = "more-wrap";
+    Object.assign(wrap.style, { position: "relative", height: "100%", display: "flex", alignItems: "center" });
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "icon-btn og-menu-trigger";
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.setAttribute("aria-haspopup", "menu");
+    trigger.setAttribute("aria-label", "Buka menu navigasi");
+    trigger.innerHTML = "<svg width=20 height=20 viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round'><path d='M4 7h16M4 12h16M4 17h16'/></svg>";
+
+    const menu = document.createElement("div");
+    menu.className = "more-menu";
+    menu.setAttribute("role", "menu");
+    menu.innerHTML = `
+      <a class="more-item" href="/informasi-user">Informasi Akun</a>
+      <a class="more-item" href="/status-pengiriman">Status Pengiriman</a>
+      <a class="more-item" href="/kontak">Kontak Person</a>
+      <div class="more-section">
+        <div class="more-label">SOCIAL</div>
+        <div class="more-title">Instagram</div>
+        <div class="more-copy">Ikuti update Oxygen Gear di Instagram.</div>
+        <a class="more-item" href="https://www.instagram.com/oxygenmontain/" target="_blank" rel="noopener noreferrer">@oxygenmontain</a>
+      </div>
+    `;
+
+    Object.assign(menu.style, {
+      display: "none",
+      position: "absolute",
+      right: "0",
+      top: "50px",
+      width: "320px",
+      background: "#11110f",
+      border: "1px solid #302e29",
+      boxShadow: "0 20px 60px rgba(0,0,0,.55)",
+      padding: "8px",
+      zIndex: "400",
+    });
+
+    const items = Array.from(menu.querySelectorAll(".more-item"));
+    items.forEach((item) => Object.assign(item.style, {
+      display: "block",
+      padding: "13px 12px",
+      color: "#d8d5cd",
+      borderRadius: "2px",
+      fontSize: "13px",
+      textDecoration: "none",
+    }));
+
+    const setOpen = (open) => {
+      menu.style.display = open ? "block" : "none";
+      trigger.setAttribute("aria-expanded", String(open));
+    };
+    const toggle = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(menu.style.display !== "block");
+    };
+    const close = (event) => {
+      if (!wrap.contains(event.target)) setOpen(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    trigger.addEventListener("click", toggle);
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKeyDown);
+    wrap.append(trigger, menu);
+    navActions.appendChild(wrap);
+
+    return () => {
+      trigger.removeEventListener("click", toggle);
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", onKeyDown);
+      wrap.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     if (pathname !== "/produk") return undefined;
     const existing = document.querySelector('script[data-oxygen-midtrans="true"]');
     if (existing) return undefined;
