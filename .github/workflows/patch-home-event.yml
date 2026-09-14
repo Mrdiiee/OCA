@@ -1,6 +1,8 @@
 name: Patch homepage private trip
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/patch-home-event.yml'
 permissions:
   contents: write
 jobs:
