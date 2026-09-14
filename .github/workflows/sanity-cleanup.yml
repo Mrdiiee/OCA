@@ -1,0 +1,18 @@
+name: Sanity cleanup
+on:
+  push:
+    branches: [main]
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f tmp-check.txt .github/workflows/sanity-cleanup.yml
+          git add -A
+          git commit -m 'Clean temporary files' || true
+          git push || true
