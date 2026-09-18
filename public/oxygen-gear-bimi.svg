@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg"
-     baseProfile="tiny" version="1.2"
+     baseProfile="tiny-ps" version="1.2"
      viewBox="0 0 1000 1000" width="1000" height="1000">
   <title>Oxygen Gear</title>
   <rect width="1000" height="1000" fill="#F41D25"/>
