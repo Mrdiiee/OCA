@@ -4,6 +4,11 @@ import MemberMenu from "./member-menu";
 
 export const metadata = {
   metadataBase: new URL("https://www.oxygengear.store"),
+  icons: {
+    icon: "https://htybhparyrbstmacxizw.supabase.co/storage/v1/object/public/homepage_media/homepage/logo-1789291882587.jpeg",
+    shortcut: "https://htybhparyrbstmacxizw.supabase.co/storage/v1/object/public/homepage_media/homepage/logo-1789291882587.jpeg",
+    apple: "https://htybhparyrbstmacxizw.supabase.co/storage/v1/object/public/homepage_media/homepage/logo-1789291882587.jpeg",
+  },
   title: { default: "Oxygen Gear Equipment", template: "%s | Oxygen Gear Equipment" },
   description: "Peralatan teknis dan jasa private trip untuk mereka yang pergi lebih jauh.",
   alternates: { canonical: "/" },
