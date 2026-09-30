@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from '../../../../lib/supabase-server';
+import { getEventRegistrationId } from '../../../../lib/event-payments';
 
 const EVENTS = ['pendakian-bersama', 'ekspedisi', 'private-trip'];
 const STATUSES = ['pending', 'confirmed', 'waitlist', 'cancelled'];
@@ -30,7 +31,29 @@ export async function GET(request) {
   if (status && STATUSES.includes(status)) query = query.eq('status', status);
   const { data, error } = await query;
   if (error) { console.error('Admin event registrations GET:', error); return NextResponse.json({ error: 'Data pendaftaran gagal dimuat.' }, { status: 500 }); }
-  return NextResponse.json({ registrations: data || [] }, { headers: { 'Cache-Control': 'no-store' } });
+  const { data: payments, error: paymentError } = await c.admin
+    .from('orders')
+    .select('order_number,user_id,total_amount,status,payment_status,payment_type,checkout_idempotency_key,created_at')
+    .like('checkout_idempotency_key', 'event-registration:%')
+    .order('created_at', { ascending: false })
+    .limit(1000);
+  if (paymentError) { console.error('Admin event payments GET:', paymentError); return NextResponse.json({ error: 'Status pembayaran event gagal dimuat.' }, { status: 500 }); }
+  const latestPaymentByRegistration = new Map();
+  for (const payment of payments || []) {
+    const registrationId = getEventRegistrationId(payment);
+    if (registrationId && !latestPaymentByRegistration.has(registrationId)) latestPaymentByRegistration.set(registrationId, payment);
+  }
+  const registrations = (data || []).map(registration => {
+    const payment = latestPaymentByRegistration.get(registration.id);
+    return {
+      ...registration,
+      payment_status: payment?.payment_status || 'not_required',
+      payment_amount: payment ? Number(payment.total_amount) : null,
+      payment_type: payment?.payment_type || null,
+      payment_order: payment?.order_number || null,
+    };
+  });
+  return NextResponse.json({ registrations }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(request) {

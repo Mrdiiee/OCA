@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../../../lib/supabase-server";
+import { applyEventPaymentStatus, isEventPaymentOrder } from "../../../../lib/event-payments";
 
 export const dynamic = "force-dynamic";
 
@@ -37,13 +38,28 @@ export async function GET(request) {
     const admin = getAdminClient();
     const { data: order, error: orderError } = await admin
       .from("orders")
-      .select("id,order_number,user_id,total_amount,status,midtrans_transaction_id")
+      .select("id,order_number,user_id,total_amount,status,payment_status,payment_type,paid_at,midtrans_transaction_id,checkout_idempotency_key")
       .eq("order_number", orderId)
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (orderError) return NextResponse.json({ error: "Pesanan gagal diverifikasi." }, { status: 500 });
     if (!order) return NextResponse.json({ error: "Pesanan tidak ditemukan." }, { status: 404 });
+    if (isEventPaymentOrder(order) && (order.status === "paid" || order.payment_status === "paid")) {
+      if (["refunded", "partially_refunded"].includes(order.payment_status)) {
+        return NextResponse.json({ ok: true, status: order.payment_status, reused: true });
+      }
+      const eventResult = await applyEventPaymentStatus(admin, order, {
+        order_id: order.order_number,
+        gross_amount: order.total_amount,
+        transaction_status: "settlement",
+        transaction_id: order.midtrans_transaction_id,
+        payment_type: order.payment_type,
+        settlement_time: order.paid_at,
+      });
+      if (eventResult.error) return NextResponse.json({ error: eventResult.error }, { status: eventResult.httpStatus || 500 });
+      return NextResponse.json({ ok: true, status: "paid", reused: true });
+    }
     if (order.status === "paid") return NextResponse.json({ ok: true, status: "paid", reused: true });
 
     const authHeader = "Basic " + Buffer.from(`${serverKey}:`).toString("base64");
@@ -75,6 +91,12 @@ export async function GET(request) {
       } else {
         paidAt = new Date().toISOString();
       }
+    }
+
+    if (isEventPaymentOrder(order)) {
+      const eventResult = await applyEventPaymentStatus(admin, order, body);
+      if (eventResult.error) return NextResponse.json({ error: eventResult.error }, { status: eventResult.httpStatus || 500 });
+      return NextResponse.json({ ok: true, status: eventResult.status, result: eventResult.result, transactionStatus: body.transaction_status });
     }
 
     const { data: result, error: processError } = await admin.rpc("process_midtrans_payment", {
