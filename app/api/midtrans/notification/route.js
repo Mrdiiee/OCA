@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { applyEventPaymentStatus, isEventPaymentOrder } from "../../../../lib/event-payments";
 
 function getAdminClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
@@ -42,12 +43,22 @@ export async function POST(request) {
     }
 
     const supabase = getAdminClient();
-    const { data: order, error: orderError } = await supabase.from("orders").select("id,status,total_amount,midtrans_transaction_id").eq("order_number", order_id).maybeSingle();
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("id,order_number,user_id,status,total_amount,payment_status,payment_type,paid_at,midtrans_transaction_id,checkout_idempotency_key")
+      .eq("order_number", order_id)
+      .maybeSingle();
     if (orderError) {
       console.error("Gagal mencari order Midtrans:", orderError);
       return NextResponse.json({ error: "Gagal membaca pesanan." }, { status: 500 });
     }
     if (!order) return NextResponse.json({ ok: true, ignored: true });
+
+    if (isEventPaymentOrder(order)) {
+      const eventResult = await applyEventPaymentStatus(supabase, order, body);
+      if (eventResult.error) return NextResponse.json({ error: eventResult.error }, { status: eventResult.httpStatus || 500 });
+      return NextResponse.json({ ok: true, status: eventResult.status, result: eventResult.result });
+    }
 
     if (order.total_amount !== null && Number(order.total_amount) !== Number(gross_amount)) {
       return NextResponse.json({ error: "Nominal transaksi tidak sesuai." }, { status: 400 });
