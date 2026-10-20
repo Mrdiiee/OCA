@@ -78,9 +78,23 @@ export async function middleware(request) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const authResult = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('AUTH_TIMEOUT')), 8000)),
+    ]);
+    user = authResult?.data?.user || null;
+  } catch (error) {
+    console.error('Middleware auth timeout/error:', error?.message || error);
+    if (!isPublicAuthPage) {
+      const url = request.nextUrl.clone();
+      url.pathname = isAdminRoute ? '/admin/login' : '/login';
+      url.searchParams.set('next', pathname);
+      return NextResponse.redirect(url);
+    }
+    return response;
+  }
 
   if (isAdminLoginPage) return response;
 
