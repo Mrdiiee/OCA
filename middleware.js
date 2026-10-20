@@ -10,6 +10,7 @@ export async function middleware(request) {
   const isMidtransWebhook = pathname === '/api/midtrans/notification';
   const isPublicProductsApi = pathname === '/api/products';
   const isEventRoute = pathname === '/event' || pathname.startsWith('/event/');
+  const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
   const isPublicStorefront =
     pathname === '/' ||
     pathname === '/produk' ||
@@ -24,6 +25,10 @@ export async function middleware(request) {
     pathname.startsWith('/status-pengiriman/') ||
     pathname === '/event' ||
     pathname.startsWith('/event/');
+
+  // /member menangani status login di sisi halaman agar navigasi tidak
+  // tertahan oleh middleware ketika Supabase Auth sedang lambat.
+  const isPublicMemberRoute = isMemberRoute;
   const isPublicAuthPage = isLoginPage || isAdminLoginPage;
 
   if (isLoginPage && request.nextUrl.searchParams.has('next')) {
@@ -35,7 +40,9 @@ export async function middleware(request) {
     }
   }
 
-  if (isMidtransWebhook || isPublicProductsApi || isPublicStorefront) return response;
+  if (isMidtransWebhook || isPublicProductsApi || isPublicStorefront || isPublicMemberRoute) {
+    return response;
+  }
 
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
