@@ -14,21 +14,39 @@ function getLevel(score) { return LEVELS.find((level) => score >= level.min && s
 
 export default function OxygenIndexPage() {
   const supabase = useMemo(() => createClient(), []);
-  const [user, setUser] = useState(null); const [assessment, setAssessment] = useState(null); const [history, setHistory] = useState([]); const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null); const [assessment, setAssessment] = useState(null); const [history, setHistory] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
+    const withTimeout = (promise, ms, message) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+    ]);
     async function load() {
-      const { data } = await supabase.auth.getUser(); const currentUser = data?.user;
-      if (!active) return;
-      if (!currentUser) { window.location.replace('/login?next=/oxygen-index'); return; }
-      setUser(currentUser);
-      const response = await fetch('/api/oxygen-index', { cache: 'no-store' });
-      if (response.ok) { const oxygenData = await response.json(); if (active) { setAssessment(oxygenData.current || null); setHistory(oxygenData.history || []); } }
-      setLoading(false);
+      setLoading(true); setError('');
+      try {
+        const { data } = await withTimeout(supabase.auth.getUser(), 10000, 'Koneksi autentikasi terlalu lama.');
+        const currentUser = data?.user;
+        if (!active) return;
+        if (!currentUser) { window.location.replace('/login?next=/oxygen-index'); return; }
+        setUser(currentUser);
+        const response = await withTimeout(fetch('/api/oxygen-index', { cache: 'no-store' }), 12000, 'Server Oxygen Index tidak merespons.');
+        if (!response.ok) {
+          if (response.status === 401) { window.location.replace('/login?next=/oxygen-index'); return; }
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error || 'Data Oxygen Index belum dapat dimuat.');
+        }
+        const oxygenData = await response.json();
+        if (active) { setAssessment(oxygenData.current || null); setHistory(oxygenData.history || []); }
+      } catch (err) {
+        if (active) setError(err?.message || 'Oxygen Index tidak dapat dimuat saat ini.');
+      } finally {
+        if (active) setLoading(false);
+      }
     }
     load(); return () => { active = false; };
   }, [supabase]);
   if (loading) return <main className="page"><p className="loading">Memuat Oxygen Index...</p></main>;
+  if (error) return <main className="page"><header className="topbar"><a href="/" className="brand"><span className="mark" />OXYGEN GEAR</a><a href="/informasi-user" className="back">Informasi Akun</a></header><section className="content"><p className="eyebrow">MEMBER / OXYGEN INDEX</p><h1>OXYGEN<br /><em>INDEX.</em></h1><div style={{border:'1px solid #302e29',background:'#11110f',padding:'26px',maxWidth:'680px'}}><strong>Oxygen Index belum dapat dimuat.</strong><p style={{color:'#8b887f',lineHeight:1.6,fontSize:'13px'}}>{error}</p><p style={{color:'#8b887f',lineHeight:1.6,fontSize:'13px'}}>Kemungkinan koneksi database sedang lambat. Data akun dan penilaian tidak dihapus.</p><button className="btn primary" onClick={() => window.location.reload()}>COBA LAGI</button><a className="btn" href="/informasi-user">KEMBALI KE INFORMASI AKUN</a></div></section></main>;
 
   const score = Number.isFinite(Number(assessment?.total_score)) ? Number(assessment.total_score) : 0; const level = getLevel(score);
   const criteria = assessment ? [['01', 'Pengalaman outdoor', assessment.experience_score, 25], ['02', 'Kesiapan & keselamatan', assessment.safety_score, 25], ['03', 'Skill lapangan', assessment.field_skill_score, 20], ['04', 'Disiplin & tanggung jawab', assessment.discipline_score, 15], ['05', 'Kontribusi ke tim Oxygen', assessment.contribution_score, 15]] : [];
