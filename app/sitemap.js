@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 const SITE_URL = "https://www.oxygengear.store";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
