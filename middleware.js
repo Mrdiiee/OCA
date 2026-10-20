@@ -11,6 +11,7 @@ export async function middleware(request) {
   const isPublicProductsApi = pathname === '/api/products';
   const isEventRoute = pathname === '/event' || pathname.startsWith('/event/');
   const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
+  const isOxygenIndexRoute = pathname === '/oxygen-index' || pathname.startsWith('/oxygen-index/');
   const isPublicStorefront =
     pathname === '/' ||
     pathname === '/produk' ||
@@ -28,7 +29,7 @@ export async function middleware(request) {
 
   // /member menangani status login di sisi halaman agar navigasi tidak
   // tertahan oleh middleware ketika Supabase Auth sedang lambat.
-  const isPublicMemberRoute = isMemberRoute;
+  const isPublicMemberRoute = isMemberRoute || isOxygenIndexRoute;
   const isPublicAuthPage = isLoginPage || isAdminLoginPage;
 
   if (isLoginPage && request.nextUrl.searchParams.has('next')) {
