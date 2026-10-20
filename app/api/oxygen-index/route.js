@@ -5,8 +5,13 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from '../../../lib/supabase-server';
 
 export async function GET() {
+  try {
   const supabase = await createServerSupabaseClient();
-  const { data: authData, error: authError } = await supabase.auth.getUser();
+  const authResult = await Promise.race([
+    supabase.auth.getUser(),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('AUTH_TIMEOUT')), 10000)),
+  ]);
+  const { data: authData, error: authError } = authResult;
   const user = authData?.user;
   if (authError || !user) return NextResponse.json({ error: 'Silakan login terlebih dahulu.' }, { status: 401 });
 
@@ -24,6 +29,11 @@ export async function GET() {
 
   const assessments = data || [];
   return NextResponse.json({ current: assessments[0] || null, history: assessments });
+  } catch (error) {
+    console.error('Oxygen Index auth/query error:', error);
+    const status = error?.message === 'AUTH_TIMEOUT' ? 504 : 500;
+    return NextResponse.json({ error: status === 504 ? 'Koneksi autentikasi sedang lambat. Silakan coba lagi.' : 'Data Oxygen Index belum dapat dimuat.' }, { status });
+  }
 }
 
 export async function POST() {

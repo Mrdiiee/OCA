@@ -9,6 +9,7 @@ export async function middleware(request) {
   const isLoginPage = pathname === '/login';
   const isMidtransWebhook = pathname === '/api/midtrans/notification';
   const isPublicProductsApi = pathname === '/api/products';
+  const isOxygenIndexApi = pathname === '/api/oxygen-index';
   const isEventRoute = pathname === '/event' || pathname.startsWith('/event/');
   const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
   const isOxygenIndexRoute = pathname === '/oxygen-index' || pathname.startsWith('/oxygen-index/');
@@ -41,7 +42,7 @@ export async function middleware(request) {
     }
   }
 
-  if (isMidtransWebhook || isPublicProductsApi || isPublicStorefront || isPublicMemberRoute) {
+  if (isMidtransWebhook || isPublicProductsApi || isOxygenIndexApi || isPublicStorefront || isPublicMemberRoute) {
     return response;
   }
 
