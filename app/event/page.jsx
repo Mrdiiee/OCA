@@ -12,8 +12,15 @@ export default async function EventPage({ searchParams }) {
   const selected = typeof params?.type === 'string' ? params.type.toUpperCase() : '';
   const category = CATEGORIES.some(([type]) => type === selected) ? selected : '';
   const supabase = await createServerSupabaseClient();
-  const { data: events = [] } = await supabase.from('events').select('*').eq('published', true).order('sort_order', { ascending: true }).order('created_at', { ascending: true });
-  const filteredEvents = category ? events.filter(event => String(event.type || '').toUpperCase() === category) : [];
+  let events = [];
+  try {
+    const { data, error } = await supabase.from('events').select('*').eq('published', true).order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+    if (!error && Array.isArray(data)) events = data;
+    else if (error) console.error('Public event page query:', error);
+  } catch (error) {
+    console.error('Public event page unavailable:', error);
+  }
+  const filteredEvents = category ? events.filter(event => String(event?.type || '').toUpperCase() === category) : [];
   const wrap = { width:'min(1160px,calc(100% - 40px))', margin:'0 auto' }, mono={fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'};
   return <main style={{minHeight:'100vh',background:'#f7f7f5',color:'#111',fontFamily:'Arial,Helvetica,sans-serif'}}>
     <div style={{background:'#111',color:'#fff',padding:'9px 16px',textAlign:'center',fontSize:10,fontWeight:800,letterSpacing:'.14em'}}>OXYGEN GEAR · EVENT</div>
